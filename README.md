@@ -3,22 +3,6 @@
 Base técnica (*foundation*) de un ERP contable SaaS multi-tenant de escritorio para contribuyentes en Ecuador.
 Monolito modular **.NET 10 LTS** · **ASP.NET Core** · **PostgreSQL + RLS** · **Avalonia** · **xUnit v3**.
 
-> Proyecto del equipo **LCS**. Repositorio: `erp-contable`. Este repositorio **no** declara cumplimiento ni homologación con el SRI.
-
-## Estado
-
-| Área | Estado |
-|---|---|
-| Solución, dependencias fijadas (CPM), estilo, CI | **Implementado** |
-| API: ProblemDetails, health checks, OpenAPI, Serilog, OpenTelemetry, correlation id | **Implementado** |
-| Multi-tenant: resolución de tenant + filtros EF + RLS forzado + roles PostgreSQL separados | **Implementado y probado** |
-| Plataforma: tenants, usuarios, membresías, roles/permisos por empresa, sucursales, contribuyentes (RUC), establecimientos, puntos de emisión | **Implementado** (lectura + alta de sucursales) |
-| Flujo vertical Avalonia → API → PostgreSQL con 2 empresas ficticias | **Implementado** (API probada; escritorio compila, ver nota Windows) |
-| Autenticación | **Parcial**: solo esquema de desarrollo `X-Dev-User`. OIDC + PKCE **pendiente** (PLAT-01) |
-| Contabilidad | **Parcial**: dominio de asientos (partida doble, inmutabilidad, reversos) probado; persistencia/API pendientes |
-| Tributario (Ecuador) | **Parcial**: validación sintáctica RUC/cédula, catálogo tributario versionado (sin valores oficiales), contratos SRI. Sin integración SRI |
-| Ventas, Compras/Tesorería, Inventario, Reportes | **Pendiente** (proyectos, permisos y contratos listos) |
-
 ## Estructura
 
 ```text
