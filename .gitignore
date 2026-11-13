@@ -36,3 +36,6 @@ pgdata/
 # SO
 Thumbs.db
 .DS_Store
+
+# Datos de conexión del equipo (hosts de Neon). No versionar.
+NEON-EQUIPO.txt

@@ -4,3 +4,4 @@
 *.axaml text eol=crlf
 *.png binary
 *.ico binary
+*.ps1 text eol=crlf
