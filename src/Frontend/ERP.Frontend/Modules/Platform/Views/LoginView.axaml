@@ -1,0 +1,21 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:ERP.Frontend.Modules.Platform.ViewModels"
+             x:Class="ERP.Frontend.Modules.Platform.Views.LoginView"
+             x:DataType="vm:LoginViewModel">
+  <Border Classes="card" Width="420" HorizontalAlignment="Center" VerticalAlignment="Center">
+    <StackPanel Spacing="12">
+      <TextBlock Classes="h1" Text="ERP Contable" />
+      <TextBlock Classes="muted" TextWrapping="Wrap"
+                 Text="Modo desarrollo: seleccione un usuario ficticio. El inicio de sesión seguro (OIDC + PKCE) está pendiente." />
+      <TextBlock Text="Correo" />
+      <AutoCompleteBox Text="{Binding Email}" ItemsSource="{Binding DemoUsers}" FilterMode="Contains"
+                       AutomationProperties.Name="Correo electrónico" />
+      <Button Classes="primary" Content="Ingresar" Command="{Binding SignInCommand}" IsDefault="True"
+              HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" />
+      <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsBusy}" />
+      <TextBlock Classes="error" Text="{Binding ErrorMessage}" IsVisible="{Binding ErrorMessage, Converter={x:Static ObjectConverters.IsNotNull}}" />
+      <TextBlock Classes="muted small" Text="{Binding ApiBaseUrl, StringFormat='API: {0}'}" />
+    </StackPanel>
+  </Border>
+</UserControl>

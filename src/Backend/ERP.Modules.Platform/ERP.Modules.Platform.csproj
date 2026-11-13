@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Módulo Plataforma (Integrante 1): tenants, usuarios, membresías, roles/permisos, sucursales,
+       contribuyentes (RUC), establecimientos y puntos de emisión. Esquema PostgreSQL: platform. -->
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\ERP.BuildingBlocks\ERP.BuildingBlocks.csproj" />
+    <ProjectReference Include="..\ERP.Infrastructure\ERP.Infrastructure.csproj" />
+    <ProjectReference Include="..\ERP.Tributario\ERP.Tributario.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="FluentValidation.DependencyInjectionExtensions" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="ERP.DbMigrator" />
+    <InternalsVisibleTo Include="ERP.UnitTests" />
+    <InternalsVisibleTo Include="ERP.IntegrationTests" />
+  </ItemGroup>
+</Project>

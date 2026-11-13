@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Contrato público de Contabilidad: lo consumen Ventas, Compras/Tesorería e Inventario para solicitar
+       contabilizaciones. Solo DTOs e interfaces; sin dependencias de EF ni ASP.NET. -->
+  <ItemGroup>
+    <ProjectReference Include="..\ERP.BuildingBlocks\ERP.BuildingBlocks.csproj" />
+  </ItemGroup>
+</Project>

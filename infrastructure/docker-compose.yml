@@ -1,0 +1,43 @@
+# Servicios locales para desarrollo. NO dependen de Neon ni se exponen fuera de localhost.
+# Uso (desde la raíz del repo):
+#   copy infrastructure\env.example infrastructure\.env   (y cambiar las contraseñas)
+#   docker compose -f infrastructure/docker-compose.yml --env-file infrastructure/.env up -d
+name: erp-contable
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_SUPERUSER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_SUPERUSER_PASSWORD:?Defina POSTGRES_SUPERUSER_PASSWORD en infrastructure/.env}
+      POSTGRES_DB: postgres
+      ERP_DB_NAME: ${ERP_DB_NAME:-erp}
+      ERP_MIGRATOR_PASSWORD: ${ERP_MIGRATOR_PASSWORD:?Defina ERP_MIGRATOR_PASSWORD}
+      ERP_APP_PASSWORD: ${ERP_APP_PASSWORD:?Defina ERP_APP_PASSWORD}
+      TZ: UTC
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - erp-pgdata:/var/lib/postgresql/data
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    ports:
+      - "127.0.0.1:${REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  erp-pgdata:

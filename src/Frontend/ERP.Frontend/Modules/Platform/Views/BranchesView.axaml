@@ -1,0 +1,42 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:ERP.Frontend.Modules.Platform.ViewModels"
+             xmlns:api="using:ERP.Frontend.Shared.Api"
+             x:Class="ERP.Frontend.Modules.Platform.Views.BranchesView"
+             x:DataType="vm:BranchesViewModel">
+  <StackPanel Spacing="16">
+    <DockPanel>
+      <Button DockPanel.Dock="Right" Content="Actualizar" Command="{Binding LoadCommand}" />
+      <TextBlock Classes="h1" Text="Sucursales" />
+    </DockPanel>
+    <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsBusy}" />
+    <TextBlock Classes="error" Text="{Binding ErrorMessage}" IsVisible="{Binding ErrorMessage, Converter={x:Static ObjectConverters.IsNotNull}}" />
+
+    <Border Classes="card" IsVisible="{Binding CanManage}">
+      <StackPanel Spacing="8">
+        <TextBlock Classes="h2" Text="Nueva sucursal" />
+        <Grid ColumnDefinitions="140,*,200,Auto" ColumnSpacing="8">
+          <TextBox Grid.Column="0" Text="{Binding NewCode}" PlaceholderText="Código" AutomationProperties.Name="Código" />
+          <TextBox Grid.Column="1" Text="{Binding NewName}" PlaceholderText="Nombre" AutomationProperties.Name="Nombre" />
+          <TextBox Grid.Column="2" Text="{Binding NewCity}" PlaceholderText="Ciudad" AutomationProperties.Name="Ciudad" />
+          <Button Grid.Column="3" Classes="primary" Content="Crear" Command="{Binding CreateCommand}" />
+        </Grid>
+        <TextBlock Classes="muted" Text="{Binding SuccessMessage}" IsVisible="{Binding SuccessMessage, Converter={x:Static ObjectConverters.IsNotNull}}" />
+      </StackPanel>
+    </Border>
+
+    <Border Classes="card">
+      <ItemsControl ItemsSource="{Binding Branches}">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="api:Branch">
+            <Grid ColumnDefinitions="120,*,160" Margin="0,4">
+              <TextBlock Grid.Column="0" FontWeight="SemiBold" Text="{Binding Code}" />
+              <TextBlock Grid.Column="1" Text="{Binding Name}" />
+              <TextBlock Grid.Column="2" Classes="muted" Text="{Binding City}" />
+            </Grid>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </Border>
+  </StackPanel>
+</UserControl>

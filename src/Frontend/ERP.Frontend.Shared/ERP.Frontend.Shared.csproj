@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Infraestructura compartida del escritorio: cliente HTTP tipado, sesión, navegación, estilos y
+       controles reutilizables (Integrante 6 cuida los estilos). Sin lógica de negocio crítica:
+       las reglas y permisos se aplican SIEMPRE en la API. Nunca contiene credenciales de base de datos. -->
+  <PropertyGroup>
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Avalonia" />
+    <PackageReference Include="Avalonia.Themes.Fluent" />
+    <PackageReference Include="CommunityToolkit.Mvvm" />
+    <PackageReference Include="Microsoft.Extensions.Http" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="ERP.UnitTests" />
+  </ItemGroup>
+</Project>

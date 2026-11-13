@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Herramienta de consola: aplica migraciones con el rol de migraciones y carga semillas de desarrollo.
+       También es el "startup project" para dotnet ef. Nunca se ejecuta con el rol runtime. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <UserSecretsId>erp-contable-dbmigrator-dev</UserSecretsId>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\ERP.Infrastructure\ERP.Infrastructure.csproj" />
+    <ProjectReference Include="..\ERP.Modules.Platform\ERP.Modules.Platform.csproj" />
+    <ProjectReference Include="..\ERP.Modules.Accounting\ERP.Modules.Accounting.csproj" />
+    <ProjectReference Include="..\ERP.Modules.Sales\ERP.Modules.Sales.csproj" />
+    <ProjectReference Include="..\ERP.Modules.Purchases\ERP.Modules.Purchases.csproj" />
+    <ProjectReference Include="..\ERP.Modules.Inventory\ERP.Modules.Inventory.csproj" />
+    <ProjectReference Include="..\ERP.Modules.Reporting\ERP.Modules.Reporting.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.Extensions.Hosting" />
+  </ItemGroup>
+</Project>

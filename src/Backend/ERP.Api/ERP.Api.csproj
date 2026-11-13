@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <!-- Host HTTP del monolito modular. Solo composición, seguridad transversal y transporte. -->
+  <PropertyGroup>
+    <UserSecretsId>erp-contable-api-dev</UserSecretsId>
+    <InvariantGlobalization>false</InvariantGlobalization>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\ERP.BuildingBlocks\ERP.BuildingBlocks.csproj" />
+    <ProjectReference Include="..\ERP.Infrastructure\ERP.Infrastructure.csproj" />
+    <ProjectReference Include="..\ERP.Modules.Platform\ERP.Modules.Platform.csproj" />
+    <ProjectReference Include="..\ERP.Modules.Accounting\ERP.Modules.Accounting.csproj" />
+    <ProjectReference Include="..\ERP.Modules.Sales\ERP.Modules.Sales.csproj" />
+    <ProjectReference Include="..\ERP.Modules.Purchases\ERP.Modules.Purchases.csproj" />
+    <ProjectReference Include="..\ERP.Modules.Inventory\ERP.Modules.Inventory.csproj" />
+    <ProjectReference Include="..\ERP.Modules.Reporting\ERP.Modules.Reporting.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+    <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" />
+    <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" />
+    <PackageReference Include="Serilog.AspNetCore" />
+    <PackageReference Include="OpenTelemetry.Extensions.Hosting" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.Http" />
+    <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="ERP.IntegrationTests" />
+  </ItemGroup>
+</Project>

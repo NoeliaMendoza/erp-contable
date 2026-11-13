@@ -1,0 +1,11 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:shell="using:ERP.Frontend.Shell"
+        x:Class="ERP.Frontend.MainWindow"
+        x:DataType="shell:MainWindowViewModel"
+        Title="ERP Contable"
+        Width="1200" Height="760" MinWidth="900" MinHeight="600"
+        WindowStartupLocation="CenterScreen"
+        Background="{StaticResource ErpSurfaceBrush}">
+  <ContentControl Content="{Binding CurrentPage}" />
+</Window>

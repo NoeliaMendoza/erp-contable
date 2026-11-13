@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Contrato público de Inventario: lo consumen Ventas y Compras. Solo DTOs e interfaces. -->
+  <ItemGroup>
+    <ProjectReference Include="..\ERP.BuildingBlocks\ERP.BuildingBlocks.csproj" />
+  </ItemGroup>
+</Project>

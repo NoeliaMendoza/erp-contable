@@ -1,0 +1,32 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:ERP.Frontend.Shell"
+             x:Class="ERP.Frontend.Shell.ShellView"
+             x:DataType="vm:ShellViewModel">
+  <Grid ColumnDefinitions="240,*">
+    <Border Grid.Column="0" Background="{StaticResource ErpSidebarBrush}" Padding="12">
+      <DockPanel>
+        <StackPanel DockPanel.Dock="Top" Spacing="2" Margin="8,8,8,20">
+          <TextBlock Classes="sidebar-title" Text="ERP Contable" />
+          <TextBlock Classes="sidebar-muted" Text="{Binding TenantName}" />
+        </StackPanel>
+        <StackPanel DockPanel.Dock="Bottom" Spacing="6" Margin="4">
+          <TextBlock Classes="sidebar-muted" Text="{Binding UserName}" />
+          <Button Content="Cambiar de empresa" Command="{Binding ChangeTenantCommand}" HorizontalAlignment="Stretch" />
+          <Button Content="Cerrar sesión" Command="{Binding SignOutCommand}" HorizontalAlignment="Stretch" />
+        </StackPanel>
+        <ListBox ItemsSource="{Binding MenuItems}" SelectedItem="{Binding SelectedItem}"
+                 Background="Transparent" AutomationProperties.Name="Menú de módulos">
+          <ListBox.ItemTemplate>
+            <DataTemplate x:DataType="vm:MenuEntry">
+              <TextBlock Classes="sidebar" Text="{Binding Title}" Padding="4,6" />
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+      </DockPanel>
+    </Border>
+    <ScrollViewer Grid.Column="1">
+      <ContentControl Content="{Binding Content}" Margin="{StaticResource ErpPagePadding}" />
+    </ScrollViewer>
+  </Grid>
+</UserControl>

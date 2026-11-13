@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Módulo Accounting. Puede referenciar BuildingBlocks, Infrastructure, ERP.Tributario y proyectos *.Contracts;
+       nunca la implementación de otro módulo (lo verifican las pruebas de arquitectura). -->
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\ERP.BuildingBlocks\ERP.BuildingBlocks.csproj" />
+    <ProjectReference Include="..\ERP.Infrastructure\ERP.Infrastructure.csproj" />
+    <ProjectReference Include="..\ERP.Modules.Accounting.Contracts\ERP.Modules.Accounting.Contracts.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="ERP.UnitTests" />
+    <InternalsVisibleTo Include="ERP.IntegrationTests" />
+  </ItemGroup>
+</Project>

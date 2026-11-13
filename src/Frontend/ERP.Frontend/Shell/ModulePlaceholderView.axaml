@@ -1,0 +1,16 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:ERP.Frontend.Shell"
+             x:Class="ERP.Frontend.Shell.ModulePlaceholderView"
+             x:DataType="vm:ModulePlaceholderViewModel">
+  <StackPanel Spacing="12">
+    <TextBlock Classes="h1" Text="{Binding Title}" />
+    <Border Classes="card">
+      <StackPanel Spacing="6">
+        <TextBlock Classes="h2" Text="Módulo pendiente de implementación" />
+        <TextBlock Text="{Binding Summary}" TextWrapping="Wrap" />
+        <TextBlock Classes="muted" Text="{Binding Owner}" />
+      </StackPanel>
+    </Border>
+  </StackPanel>
+</UserControl>

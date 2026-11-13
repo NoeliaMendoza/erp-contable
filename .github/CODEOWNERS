@@ -1,0 +1,30 @@
+# CODEOWNERS — asigna revisores automáticamente por carpeta.
+# PENDIENTE: reemplazar los comentarios por usuarios reales de GitHub cuando el equipo confirme
+# responsables (no se inventan nombres). Formato: <ruta>  @usuario1 @usuario2
+# Mientras las líneas estén comentadas, GitHub no exige revisores por propietario.
+
+# Transversal (líder técnico + Integrante 1)
+# /Directory.*.props                         @lider @integrante1
+# /global.json                               @lider
+# /.github/                                  @lider
+# /src/Backend/ERP.BuildingBlocks/           @lider @integrante1
+# /src/Backend/ERP.Infrastructure/           @lider @integrante1
+# /src/Backend/ERP.Api/                      @lider @integrante1
+# /src/Backend/ERP.DbMigrator/               @lider @integrante1
+
+# Módulos
+# /src/Backend/ERP.Modules.Platform/         @integrante1
+# /src/Frontend/ERP.Frontend/Modules/Platform/ @integrante1
+# /src/Backend/ERP.Modules.Accounting*/      @integrante2
+# /src/Frontend/ERP.Frontend/Modules/Accounting/ @integrante2
+# /src/Backend/ERP.Modules.Sales/            @integrante3
+# /src/Backend/ERP.Tributario/                  @integrante3 @integrante4
+# /docs/ecuador/                             @integrante3 @integrante4
+# /src/Frontend/ERP.Frontend/Modules/Sales/    @integrante3
+# /src/Backend/ERP.Modules.Purchases/        @integrante4
+# /src/Frontend/ERP.Frontend/Modules/Purchases/ @integrante4
+# /src/Backend/ERP.Modules.Inventory*/       @integrante5
+# /src/Frontend/ERP.Frontend/Modules/Inventory/ @integrante5
+# /src/Backend/ERP.Modules.Reporting/        @integrante6
+# /src/Frontend/ERP.Frontend.Shared/           @integrante6
+# /src/Frontend/ERP.Frontend/Modules/Reporting/ @integrante6

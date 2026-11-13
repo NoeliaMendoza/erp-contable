@@ -1,0 +1,27 @@
+<Solution>
+  <Folder Name="/src/" />
+  <Folder Name="/src/Backend/">
+    <Project Path="src/Backend/ERP.Api/ERP.Api.csproj" />
+    <Project Path="src/Backend/ERP.BuildingBlocks/ERP.BuildingBlocks.csproj" />
+    <Project Path="src/Backend/ERP.DbMigrator/ERP.DbMigrator.csproj" />
+    <Project Path="src/Backend/ERP.Tributario/ERP.Tributario.csproj" />
+    <Project Path="src/Backend/ERP.Infrastructure/ERP.Infrastructure.csproj" />
+    <Project Path="src/Backend/ERP.Modules.Accounting.Contracts/ERP.Modules.Accounting.Contracts.csproj" />
+    <Project Path="src/Backend/ERP.Modules.Accounting/ERP.Modules.Accounting.csproj" />
+    <Project Path="src/Backend/ERP.Modules.Inventory.Contracts/ERP.Modules.Inventory.Contracts.csproj" />
+    <Project Path="src/Backend/ERP.Modules.Inventory/ERP.Modules.Inventory.csproj" />
+    <Project Path="src/Backend/ERP.Modules.Platform/ERP.Modules.Platform.csproj" />
+    <Project Path="src/Backend/ERP.Modules.Purchases/ERP.Modules.Purchases.csproj" />
+    <Project Path="src/Backend/ERP.Modules.Reporting/ERP.Modules.Reporting.csproj" />
+    <Project Path="src/Backend/ERP.Modules.Sales/ERP.Modules.Sales.csproj" />
+  </Folder>
+  <Folder Name="/src/Frontend/">
+    <Project Path="src/Frontend/ERP.Frontend.Shared/ERP.Frontend.Shared.csproj" />
+    <Project Path="src/Frontend/ERP.Frontend/ERP.Frontend.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/ERP.ArchitectureTests/ERP.ArchitectureTests.csproj" />
+    <Project Path="tests/ERP.IntegrationTests/ERP.IntegrationTests.csproj" />
+    <Project Path="tests/ERP.UnitTests/ERP.UnitTests.csproj" />
+  </Folder>
+</Solution>

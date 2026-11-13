@@ -1,0 +1,38 @@
+# Build
+bin/
+obj/
+artifacts/
+publish/
+*.user
+*.suo
+*.userprefs
+.vs/
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.DotSettings.user
+TestResults/
+coverage*/
+*.trx
+
+# Secretos y entornos locales (NUNCA versionar)
+.env
+.env.*
+!.env.example
+infrastructure/.env
+appsettings.*.local.json
+*.pfx
+*.p12
+*.pem
+*.key
+secrets.json
+
+# Datos
+*.dump
+*.backup
+*.sql.gz
+pgdata/
+
+# SO
+Thumbs.db
+.DS_Store

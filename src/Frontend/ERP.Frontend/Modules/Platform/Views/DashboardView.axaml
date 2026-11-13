@@ -1,0 +1,57 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:ERP.Frontend.Modules.Platform.ViewModels"
+             xmlns:api="using:ERP.Frontend.Shared.Api"
+             x:Class="ERP.Frontend.Modules.Platform.Views.DashboardView"
+             x:DataType="vm:DashboardViewModel">
+  <StackPanel Spacing="16">
+    <DockPanel>
+      <Button DockPanel.Dock="Right" Content="Actualizar" Command="{Binding LoadCommand}" />
+      <TextBlock Classes="h1" Text="{Binding TenantName}" />
+    </DockPanel>
+    <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsBusy}" />
+    <TextBlock Classes="error" Text="{Binding ErrorMessage}" IsVisible="{Binding ErrorMessage, Converter={x:Static ObjectConverters.IsNotNull}}" />
+
+    <Border Classes="card">
+      <StackPanel Spacing="4">
+        <TextBlock Classes="muted" Text="Sucursales registradas" />
+        <TextBlock Classes="kpi" Text="{Binding BranchCount}" />
+      </StackPanel>
+    </Border>
+
+    <TextBlock Classes="h2" Text="Contribuyentes, establecimientos y puntos de emisión" />
+    <ItemsControl ItemsSource="{Binding Taxpayers}">
+      <ItemsControl.ItemTemplate>
+        <DataTemplate x:DataType="api:Taxpayer">
+          <Border Classes="card" Margin="0,0,0,8">
+            <StackPanel Spacing="4">
+              <TextBlock FontWeight="SemiBold" Text="{Binding LegalName}" />
+              <TextBlock Text="{Binding Ruc, StringFormat='RUC: {0}'}" />
+              <TextBlock Classes="muted" Text="{Binding Kind, StringFormat='Tipo: {0}'}" />
+              <ItemsControl ItemsSource="{Binding Establishments}" Margin="12,6,0,0">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="api:Establishment">
+                    <StackPanel>
+                      <TextBlock>
+                        <Run Text="Establecimiento " /><Run Text="{Binding Code}" FontWeight="SemiBold" /><Run Text=" — " /><Run Text="{Binding Name}" />
+                      </TextBlock>
+                      <ItemsControl ItemsSource="{Binding EmissionPoints}" Margin="16,0,0,0">
+                        <ItemsControl.ItemTemplate>
+                          <DataTemplate x:DataType="api:EmissionPoint">
+                            <TextBlock Classes="muted">
+                              <Run Text="Punto de emisión " /><Run Text="{Binding Code}" /><Run Text=": " /><Run Text="{Binding Description}" />
+                            </TextBlock>
+                          </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                      </ItemsControl>
+                    </StackPanel>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+          </Border>
+        </DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
+  </StackPanel>
+</UserControl>

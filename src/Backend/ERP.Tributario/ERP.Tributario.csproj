@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Localización Ecuador: identificación (RUC/cédula), catálogos tributarios versionados por vigencia
+       e interfaces del submódulo SRI. Sin conexiones reales al SRI ni valores fiscales inventados.
+       Ver docs/ecuador/. -->
+  <ItemGroup>
+    <ProjectReference Include="..\ERP.BuildingBlocks\ERP.BuildingBlocks.csproj" />
+  </ItemGroup>
+</Project>

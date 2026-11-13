@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Abstracciones pequeñas y estables compartidas por todos los módulos.
+       Regla: sin EF Core, sin ASP.NET Core, sin lógica de negocio de un módulo concreto. -->
+  <PropertyGroup>
+    <RootNamespace>ERP.BuildingBlocks</RootNamespace>
+  </PropertyGroup>
+</Project>

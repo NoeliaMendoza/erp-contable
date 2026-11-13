@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  build-test:
+    name: Compilar, verificar y probar
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: |
+            Directory.Packages.props
+            **/*.csproj
+
+      - name: Restaurar herramientas y paquetes
+        run: |
+          dotnet tool restore
+          dotnet restore ERP.slnx
+
+      - name: Formato (dotnet format)
+        run: dotnet format ERP.slnx --verify-no-changes --no-restore --severity warn
+
+      - name: Compilar (warnings = errores)
+        run: dotnet build ERP.slnx -c Release --no-restore
+
+      - name: Migraciones al día con el modelo
+        run: >
+          dotnet ef migrations has-pending-model-changes
+          --project src/Backend/ERP.Modules.Platform
+          --startup-project src/Backend/ERP.DbMigrator
+          --context PlatformDbContext
+          --configuration Release --no-build
+
+      - name: Pruebas unitarias y de arquitectura
+        run: |
+          dotnet test --project tests/ERP.UnitTests -c Release --no-build
+          dotnet test --project tests/ERP.ArchitectureTests -c Release --no-build
+
+      - name: Pruebas de integración y seguridad multi-tenant (PostgreSQL temporal)
+        run: dotnet test --project tests/ERP.IntegrationTests -c Release --no-build
+
+  dependency-review:
+    name: Revisión de dependencias
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/dependency-review-action@v4
+        continue-on-error: true # requiere Dependency Graph habilitado en el repositorio

@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Pruebas de integración y seguridad multi-tenant contra PostgreSQL REAL (Testcontainers).
+       Requieren Docker. Usan el rol runtime real (erp_app) para validar RLS. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="xunit.v3" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
+    <PackageReference Include="Testcontainers.PostgreSql" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Backend\ERP.Api\ERP.Api.csproj" />
+    <ProjectReference Include="..\..\src\Backend\ERP.DbMigrator\ERP.DbMigrator.csproj" />
+  </ItemGroup>
+</Project>

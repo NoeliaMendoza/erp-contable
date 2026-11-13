@@ -1,0 +1,27 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:ERP.Frontend.Modules.Platform.ViewModels"
+             xmlns:api="using:ERP.Frontend.Shared.Api"
+             x:Class="ERP.Frontend.Modules.Platform.Views.TenantSelectionView"
+             x:DataType="vm:TenantSelectionViewModel">
+  <Border Classes="card" Width="460" HorizontalAlignment="Center" VerticalAlignment="Center">
+    <StackPanel Spacing="12">
+      <TextBlock Classes="h1" Text="{Binding Greeting}" />
+      <TextBlock Classes="muted" Text="Seleccione la empresa con la que desea trabajar:" />
+      <ListBox ItemsSource="{Binding Memberships}" SelectedItem="{Binding Selected}" MaxHeight="300"
+               AutomationProperties.Name="Empresas disponibles">
+        <ListBox.ItemTemplate>
+          <DataTemplate x:DataType="api:Membership">
+            <TextBlock Text="{Binding TenantName}" Padding="4" />
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+      <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+        <Button Content="Volver" Command="{Binding BackCommand}" />
+        <Button Classes="primary" Content="Entrar" Command="{Binding EnterCommand}" IsDefault="True" />
+      </StackPanel>
+      <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsBusy}" />
+      <TextBlock Classes="error" Text="{Binding ErrorMessage}" IsVisible="{Binding ErrorMessage, Converter={x:Static ObjectConverters.IsNotNull}}" />
+    </StackPanel>
+  </Border>
+</UserControl>
