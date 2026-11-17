@@ -28,16 +28,18 @@ public sealed class RowLevelSecurityTests(PostgresFixture db)
     }
 
     [Theory]
-    [InlineData("branches")]
-    [InlineData("taxpayers")]
-    [InlineData("roles")]
-    [InlineData("tenants")]
-    [InlineData("tenant_memberships")]
-    [InlineData("establishments")]
+    [InlineData("platform.branches")]
+    [InlineData("platform.taxpayers")]
+    [InlineData("platform.roles")]
+    [InlineData("platform.tenants")]
+    [InlineData("platform.tenant_memberships")]
+    [InlineData("platform.establishments")]
+    [InlineData("inventory.units")]
+    [InlineData("inventory.products")]
     public async Task Sin_contexto_de_tenant_no_se_ve_ninguna_fila(string table)
     {
         await using var conn = await OpenAsync(db.AppConnectionString);
-        Assert.Equal(0L, await ScalarAsync<long>(conn, null, $"SELECT count(*) FROM platform.{table}"));
+        Assert.Equal(0L, await ScalarAsync<long>(conn, null, $"SELECT count(*) FROM {table}"));
     }
 
     [Fact]
@@ -78,6 +80,24 @@ public sealed class RowLevelSecurityTests(PostgresFixture db)
 
         Assert.Equal(0, await ExecuteAsync(conn, tx, $"UPDATE platform.branches SET name = 'x' WHERE tenant_id = '{B}'"));
         Assert.Equal(0, await ExecuteAsync(conn, tx, $"DELETE FROM platform.taxpayers WHERE tenant_id = '{B}'"));
+    }
+
+    [Fact]
+    public async Task La_base_impide_un_producto_con_unidad_de_otra_empresa()
+    {
+        await using var conn = await OpenAsync(db.AppConnectionString);
+        await using var tx = await conn.BeginTransactionAsync(Ct);
+        await SetTenantAsync(conn, tx, A);
+        var unitOfA = await ScalarAsync<Guid>(conn, tx, "SELECT id FROM inventory.units LIMIT 1");
+
+        // Ni siquiera con el contexto correcto se puede apuntar a la unidad de A desde una fila de B:
+        // RLS rechaza tenant_id = B y la FK compuesta (tenant_id, unit_id) impediría el vínculo cruzado.
+        var ex = await Assert.ThrowsAsync<PostgresException>(() => ScalarAsync<int>(conn, tx, $"""
+            INSERT INTO inventory.products (id, tenant_id, sku, name, kind, unit_id, price, is_active, created_at_utc)
+            VALUES (gen_random_uuid(), '{B}', 'HACK', 'Intruso', 'Product', '{unitOfA}', 1, true, now()) RETURNING 1
+            """));
+
+        Assert.Contains(ex.SqlState, new[] { PostgresErrorCodes.InsufficientPrivilege, PostgresErrorCodes.ForeignKeyViolation });
     }
 
     [Fact]

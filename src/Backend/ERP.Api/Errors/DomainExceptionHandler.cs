@@ -12,6 +12,7 @@ internal sealed class DomainExceptionHandler(IProblemDetailsService problems) : 
         var (status, title, code) = exception switch
         {
             NotFoundException nf => (StatusCodes.Status404NotFound, "Recurso no encontrado", nf.Code),
+            ConflictException ce => (StatusCodes.Status409Conflict, "Conflicto con datos existentes", ce.Code),
             DomainException de => (StatusCodes.Status422UnprocessableEntity, "Regla de negocio incumplida", de.Code),
             TenantContextMissingException => (StatusCodes.Status400BadRequest, "Empresa no seleccionada", "tenant_required"),
             UnauthorizedAccessException => (StatusCodes.Status401Unauthorized, "No autenticado", "unauthenticated"),

@@ -36,3 +36,9 @@ public sealed record ProblemDetailsModel(
     int? Status,
     string? Code,
     Dictionary<string, string[]>? Errors);
+
+/// <summary>Página de resultados del contrato CRUD v1 (items, totalCount, page, pageSize).</summary>
+public sealed record PagedResult<T>(IReadOnlyList<T> Items, int TotalCount, int Page, int PageSize)
+{
+    public int TotalPages => PageSize <= 0 ? 0 : (TotalCount + PageSize - 1) / PageSize;
+}
