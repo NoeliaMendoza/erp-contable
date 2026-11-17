@@ -2,6 +2,9 @@ using ERP.BuildingBlocks.Security;
 using ERP.Infrastructure.Tenancy;
 using ERP.Modules.Accounting;
 using ERP.Modules.Inventory;
+using ERP.Modules.Inventory.Contracts;
+using ERP.Modules.Inventory.Data;
+using ERP.Modules.Inventory.Models;
 using ERP.Modules.Platform;
 using ERP.Modules.Platform.Models;
 using ERP.Modules.Purchases;
@@ -89,6 +92,7 @@ public sealed class DevelopmentSeeder(DatabaseMigrator migrator)
         .. PlatformPermissions.ReadOnly,
         InventoryPermissions.UnitsRead,
         InventoryPermissions.ProductsRead,
+        InventoryPermissions.CategoriesRead,
     ];
 
     /// <summary>Catálogo ficticio mínimo (ejemplo del plan: cuadernos a USD 5) para la empresa que vende productos.</summary>
@@ -98,22 +102,44 @@ public sealed class DevelopmentSeeder(DatabaseMigrator migrator)
         await using var db = migrator.CreateInventoryContext(session);
         await using var tx = await db.Database.BeginTransactionAsync(ct);
 
-        if (await db.Units.AnyAsync(ct))
+        if (!await db.Units.AnyAsync(ct))
         {
-            return;
+            var und = Unit.Create(Guid.CreateVersion7(), tenantId, "UND", "Unidad", now, null);
+            var hora = Unit.Create(Guid.CreateVersion7(), tenantId, "HORA", "Hora", now, null);
+            db.Units.AddRange(und, hora);
+            db.Products.AddRange(
+                Product.Create(Guid.CreateVersion7(), tenantId,
+                    new ProductData("CUAD-001", "Cuaderno universitario 100 hojas", ProductKind.Product, und.Id, 5.00m,
+                        VatTreatment.Standard, Barcode: "7860000000017", Cost: 3.20m, MinStock: 10m), now, null),
+                Product.Create(Guid.CreateVersion7(), tenantId,
+                    new ProductData("SRV-INST", "Servicio de instalación", ProductKind.Service, hora.Id, 25.00m, VatTreatment.Standard),
+                    now, null));
+            await db.SaveChangesAsync(ct);
         }
 
-        var und = ERP.Modules.Inventory.Models.Unit.Create(Guid.CreateVersion7(), tenantId, "UND", "Unidad", now, null);
-        var hora = ERP.Modules.Inventory.Models.Unit.Create(Guid.CreateVersion7(), tenantId, "HORA", "Hora", now, null);
-        db.Units.AddRange(und, hora);
-        db.Products.AddRange(
-            ERP.Modules.Inventory.Models.Product.Create(Guid.CreateVersion7(), tenantId, "CUAD-001", "Cuaderno universitario 100 hojas",
-                ERP.Modules.Inventory.Models.ProductKind.Product, und.Id, 5.00m, now, null),
-            ERP.Modules.Inventory.Models.Product.Create(Guid.CreateVersion7(), tenantId, "SRV-INST", "Servicio de instalación",
-                ERP.Modules.Inventory.Models.ProductKind.Service, hora.Id, 25.00m, now, null));
+        // Categorías: aparte, para que también se agreguen en bases sembradas antes de que existieran (ramas de Neon).
+        if (!await db.Categories.AnyAsync(ct))
+        {
+            var papeleria = Category.Create(Guid.CreateVersion7(), tenantId, "Papelería", now, null);
+            var servicios = Category.Create(Guid.CreateVersion7(), tenantId, "Servicios técnicos", now, null);
+            db.Categories.AddRange(papeleria, servicios);
+            await db.SaveChangesAsync(ct);
 
-        await db.SaveChangesAsync(ct);
+            await AssignCategoryAsync(db, "CUAD-001", papeleria.Id, now, ct);
+            await AssignCategoryAsync(db, "SRV-INST", servicios.Id, now, ct);
+            await db.SaveChangesAsync(ct);
+        }
+
         await tx.CommitAsync(ct);
+    }
+
+    private static async Task AssignCategoryAsync(InventoryDbContext db, string sku, Guid categoryId, DateTimeOffset now, CancellationToken ct)
+    {
+        var product = await db.Products.SingleOrDefaultAsync(p => p.Sku == sku && p.CategoryId == null, ct);
+        product?.Update(
+            new ProductData(product.Sku, product.Name, product.Kind, product.UnitId, product.Price, product.VatTreatment,
+                categoryId, product.Barcode, product.Description, product.Cost, product.TracksInventory, product.MinStock),
+            now, null);
     }
 
     private async Task SeedUsersAsync(DateTimeOffset now, CancellationToken ct)

@@ -27,6 +27,7 @@ public sealed class ViewLocator : IDataTemplate
         // Inventario (Mendoza)
         [typeof(UnitsViewModel)] = () => new UnitsView(),
         [typeof(ProductsViewModel)] = () => new ProductsView(),
+        [typeof(CategoriesViewModel)] = () => new CategoriesView(),
     };
 
     public Control Build(object? param) =>

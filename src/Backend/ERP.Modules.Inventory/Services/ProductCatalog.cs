@@ -17,7 +17,8 @@ internal sealed class ProductCatalog(InventoryDbContext db) : IProductCatalog
             await db.Products.AsNoTracking()
                 .Where(p => productIds.Contains(p.Id))
                 .Join(db.Units, p => p.UnitId, u => u.Id, (p, u) =>
-                    new ProductSummary(p.Id, p.Sku, p.Name, p.Kind == ProductKind.Service, u.Code, p.IsActive))
+                    new ProductSummary(
+                        p.Id, p.Sku, p.Name, p.Kind == ProductKind.Service, u.Code, p.IsActive, p.VatTreatment, p.TracksInventory, p.Barcode))
                 .ToListAsync(ct),
             cancellationToken);
 }

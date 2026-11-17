@@ -68,6 +68,7 @@ public sealed class InventoryFrontendTests
         vm.Sku = "con espacio";
         vm.Name = "Artículo";
         vm.FormUnit = new UnitItem(Guid.NewGuid(), "UND", "Unidad", true);
+        vm.FormVat = VatOption.All[0];
         vm.PriceText = "1";
         await vm.SaveCommand.ExecuteAsync(null);
 
@@ -75,12 +76,114 @@ public sealed class InventoryFrontendTests
         Assert.NotNull(vm.ErrorMessage);
     }
 
+    [Fact]
+    public async Task Iva_es_obligatorio_antes_de_enviar()
+    {
+        var requests = new List<HttpRequestMessage>();
+        var vm = CreateViewModel(requests, _ => Json(HttpStatusCode.OK, EmptyPage));
+        await WaitForIdleAsync(vm);
+        requests.Clear();
+
+        vm.Sku = "X1";
+        vm.Name = "Artículo";
+        vm.FormUnit = new UnitItem(Guid.NewGuid(), "UND", "Unidad", true);
+        vm.PriceText = "1";
+        await vm.SaveCommand.ExecuteAsync(null);
+
+        Assert.NotNull(vm.VatError);
+        Assert.DoesNotContain(requests, r => r.Method == HttpMethod.Post);
+    }
+
+    [Fact]
+    public async Task Servicio_no_controla_inventario_y_limpia_el_stock_minimo()
+    {
+        var vm = CreateViewModel([], _ => Json(HttpStatusCode.OK, EmptyPage));
+        await WaitForIdleAsync(vm);
+
+        vm.MinStockText = "5";
+        vm.FormKind = KindOption.FormKinds.Single(k => k.Value == "Service");
+
+        Assert.False(vm.IsProduct);
+        Assert.False(vm.TracksInventory);
+        Assert.Null(vm.MinStockText);
+
+        vm.FormKind = KindOption.FormKinds.Single(k => k.Value == "Product");
+        Assert.True(vm.TracksInventory);
+    }
+
+    [Theory]
+    [InlineData("5", "3,20", "36")]
+    [InlineData("0", "1", "")]
+    [InlineData("5", "", "")]
+    public async Task Margen_se_calcula_sobre_el_precio(string price, string cost, string expectedFragment)
+    {
+        var vm = CreateViewModel([], _ => Json(HttpStatusCode.OK, EmptyPage));
+        await WaitForIdleAsync(vm);
+
+        vm.PriceText = price;
+        vm.CostText = cost;
+
+        if (expectedFragment.Length == 0)
+        {
+            Assert.Equal(string.Empty, vm.MarginText);
+        }
+        else
+        {
+            Assert.Contains(expectedFragment, vm.MarginText, StringComparison.Ordinal);
+        }
+    }
+
+    [Fact]
+    public async Task Formulario_envia_la_ficha_completa()
+    {
+        string? body = null;
+        var categoryId = Guid.NewGuid();
+        var vm = CreateViewModel([], req =>
+        {
+            if (req.Method != HttpMethod.Post)
+            {
+                return Json(HttpStatusCode.OK, EmptyPage);
+            }
+
+            body = req.Content!.ReadAsStringAsync().GetAwaiter().GetResult();
+            return Json(HttpStatusCode.BadRequest, """{"status":400,"title":"Datos inválidos","errors":{"Barcode":["Repetido"]}}""");
+        });
+        await WaitForIdleAsync(vm);
+
+        vm.Sku = "CUAD-002";
+        vm.Name = "Cuaderno";
+        vm.FormUnit = new UnitItem(Guid.NewGuid(), "UND", "Unidad", true);
+        vm.FormCategory = new CategoryOption(categoryId, "Papelería");
+        vm.FormVat = VatOption.All.Single(v => v.Value == "ZeroRated");
+        vm.PriceText = "5,25";
+        vm.CostText = "3,2";
+        vm.Barcode = "786123";
+        vm.MinStockText = "10";
+        await vm.SaveCommand.ExecuteAsync(null);
+
+        Assert.NotNull(body);
+        Assert.Contains("\"vatTreatment\":\"ZeroRated\"", body, StringComparison.Ordinal);
+        Assert.Contains($"\"categoryId\":\"{categoryId}\"", body, StringComparison.Ordinal);
+        Assert.Contains("\"cost\":3.2", body, StringComparison.Ordinal);
+        Assert.Contains("\"tracksInventory\":true", body, StringComparison.Ordinal);
+        Assert.Contains("\"minStock\":10", body, StringComparison.Ordinal);
+        Assert.Equal("Repetido", vm.BarcodeError);
+    }
+
+    [Fact]
+    public void Consulta_incluye_la_categoria()
+    {
+        var id = Guid.Parse("0195a000-0000-7000-8000-000000000001");
+
+        Assert.EndsWith("&categoryId=0195a000-0000-7000-8000-000000000001", InventoryApi.Query(1, 20, null, null, null, id), StringComparison.Ordinal);
+    }
+
     private static ProductsViewModel CreateViewModel(List<HttpRequestMessage> requests, Func<HttpRequestMessage, HttpResponseMessage> responder)
     {
         var session = new SessionState();
         session.SignIn("ana.admin@demo.local");
         session.SelectTenant(Guid.NewGuid(), "Demo");
-        session.SetTenantDetails(["inventory.products.read", "inventory.products.write"], ["inventory"]);
+        session.SetTenantDetails(["inventory.products.read", "inventory.products.write", "inventory.categories.read"], ["inventory"]);
 
         var handler = new SessionHeadersHandler(session)
         {

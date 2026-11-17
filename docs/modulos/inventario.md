@@ -102,3 +102,20 @@ del sistema (Administrador y Consulta).
 Entradas, salidas y existencias con trazabilidad al documento (INV-02/03); valoración por promedio móvil a
 acordar con Romero; coordinación con Torres (recepción) y Casas (venta). Verificación del ejemplo:
 entrada 10, salida 4, saldo 6 y costo de salida 12.
+
+## Ficha del artículo (paquete 1)
+
+| Campo | Regla |
+|---|---|
+| IVA (`vatTreatment`) | **Obligatorio**: `Standard` (gravado, tarifa general), `ZeroRated` (0 %), `Exempt` (exento), `NotSubject` (no objeto). No se guarda ningún porcentaje: Ventas resuelve código SRI y porcentaje vigente a la fecha de la factura con `TaxRateCatalog` |
+| Categoría (`categoryId`) | Opcional. Debe ser de la misma empresa (422 `category_not_available`) y estar activa (422 `category_inactive`). FK compuesta `(tenant_id, category_id)` |
+| Código de barras (`barcode`) | Opcional, máx. 25 (igual que el código auxiliar del SRI), MAYÚSCULAS, único por empresa (409 `product_barcode_duplicated`). La búsqueda también lo usa |
+| Descripción | Opcional, máx. 300 (igual que la descripción del detalle de la factura) |
+| Costo (`cost`) | Opcional, USD, ≥ 0, máx. 4 decimales. Solo referencial (margen); el costo real vendrá del kardex |
+| Controla inventario (`tracksInventory`) | Por defecto: producto sí, servicio no. Un servicio **nunca** controla inventario |
+| Stock mínimo (`minStock`) | Opcional, ≥ 0, solo si controla inventario |
+
+Categorías: `GET/POST/PUT/PATCH /api/v1/categories` (`inventory.categories.read` / `.write`). Nombre único por empresa sin
+distinguir mayúsculas (409 `category_name_duplicated`); no se desactiva si la usan artículos activos (409 `category_in_use`).
+La base repite las reglas con CHECK (`ck_products_*`), RLS en `inventory.categories` e índice único `upper(name)`.
+Migración: `InventoryProductSheet` (las filas existentes quedan con IVA `Standard` solo como dato de demostración).

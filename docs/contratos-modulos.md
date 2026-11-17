@@ -15,7 +15,7 @@ Cambiar un contrato = PR revisado por productor **y** consumidores.
 - Transacción: se ejecuta dentro de la transacción del caso de uso llamador (misma base). Si en el futuro se separan bases → documentar outbox.
 
 ## Inventory.Contracts (Mendoza)
-- `IProductCatalog.GetByIdsAsync`: **implementado** (INV-01). Solo artículos de la empresa activa; detalle en [modulos/inventario.md](modulos/inventario.md).
+- `IProductCatalog.GetByIdsAsync`: **implementado** (INV-01). Solo artículos de la empresa activa; incluye `VatTreatment` (Ventas resuelve el código SRI y el porcentaje vigente con `TaxRateCatalog`), `TracksInventory` y `Barcode`; detalle en [modulos/inventario.md](modulos/inventario.md).
 - `IStockQueryService.GetStockAsync`: pendiente (INV-03).
 - `IInventoryMovementService.RegisterAsync(InventoryMovementRequest)`: idempotente, con control de concurrencia; política de stock negativo y costeo → D-06.
 
@@ -44,6 +44,7 @@ Todo módulo nuevo sigue este patrón (implementado primero en Inventario):
 | GET | `/api/v1/tenant/branches` · `/{id}` | `platform.branches.read` |
 | POST | `/api/v1/tenant/branches` | `platform.branches.manage` |
 | GET/POST/PUT/PATCH | `/api/v1/units` · `/{id}` · `/{id}/status` | `inventory.units.read` / `.write` |
+| GET/POST/PUT/PATCH | `/api/v1/categories` · `/{id}` · `/{id}/status` | `inventory.categories.read` / `.write` |
 | GET/POST/PUT/PATCH | `/api/v1/products` · `/{id}` · `/{id}/status` | `inventory.products.read` / `.write` |
 | GET | `/api/v1/tenant/taxpayers` | `platform.taxpayers.read` |
 
