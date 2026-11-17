@@ -81,6 +81,19 @@ Dependencias entre módulos solo vía `*.Contracts` 🔒 (`DependencyRulesTests`
 - Toda acción debe poder hacerse con teclado; `AutomationProperties.Name` en campos sin etiqueta.
 - Un componente que se repite en dos módulos se mueve a `ERP.Frontend.Shared` (lo coordina el Integrante 6).
 
+### Componentes visuales compartidos
+
+Los controles de `ERP.Frontend.Shared/Controls` concentran patrones repetidos para que cada módulo conserve la misma experiencia:
+
+- `FormField` para etiqueta, ayuda, contenido y error de campo.
+- `FeedbackBar` para carga, error recuperable y confirmación.
+- `SearchBox` para búsquedas y limpieza del texto.
+- `PaginationBar` para paginación controlada por el ViewModel.
+- `EmptyState` para listas sin registros.
+- `ConfirmationDialog` para acciones que requieren confirmación.
+
+La galería identificada está en `src/Frontend/ERP.Frontend/Modules/Ui/Views/ComponentGalleryView.axaml`. Es una muestra local de componentes; no sustituye pruebas de persistencia ni autorización. `BranchesView` demuestra la conexión de los controles a un CRUD real.
+
 ## 8. Git
 
 - Ramas: `feature/<modulo>-<tarea>`, `fix/...`, `docs/...`, `test/...`, `chore/...` en minúsculas con guiones.

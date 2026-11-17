@@ -2,6 +2,8 @@ using Avalonia.Controls;
 using Avalonia.Controls.Templates;
 using ERP.Frontend.Modules.Platform.ViewModels;
 using ERP.Frontend.Modules.Platform.Views;
+using ERP.Frontend.Modules.Ui.ViewModels;
+using ERP.Frontend.Modules.Ui.Views;
 using ERP.Frontend.Shared.Mvvm;
 using ERP.Frontend.Shell;
 
@@ -20,6 +22,7 @@ public sealed class ViewLocator : IDataTemplate
         [typeof(ShellViewModel)] = () => new ShellView(),
         [typeof(DashboardViewModel)] = () => new DashboardView(),
         [typeof(BranchesViewModel)] = () => new BranchesView(),
+        [typeof(ComponentGalleryViewModel)] = () => new ComponentGalleryView(),
         [typeof(ModulePlaceholderViewModel)] = () => new ModulePlaceholderView(),
     };
 

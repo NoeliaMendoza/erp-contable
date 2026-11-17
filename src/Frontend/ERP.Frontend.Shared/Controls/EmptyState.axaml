@@ -1,0 +1,17 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="ERP.Frontend.Shared.Controls.EmptyState"
+             x:Name="root">
+  <Border Classes="empty-state">
+    <StackPanel Spacing="8" HorizontalAlignment="Center">
+      <TextBlock Classes="h2" HorizontalAlignment="Center" Text="{Binding Title, ElementName=root}" />
+      <TextBlock Classes="muted" HorizontalAlignment="Center" TextWrapping="Wrap"
+                 Text="{Binding Message, ElementName=root}" />
+      <Button Classes="primary"
+              HorizontalAlignment="Center"
+              Content="{Binding ActionText, ElementName=root}"
+              Command="{Binding ActionCommand, ElementName=root}"
+              IsVisible="{Binding ActionCommand, ElementName=root, Converter={x:Static ObjectConverters.IsNotNull}}" />
+    </StackPanel>
+  </Border>
+</UserControl>
