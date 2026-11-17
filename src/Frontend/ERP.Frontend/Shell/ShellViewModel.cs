@@ -38,6 +38,11 @@ public sealed partial class ShellViewModel : ViewModelBase
                 MenuItems.Add(new MenuEntry("Productos y servicios", pages.InventoryProducts));
             }
 
+            if (session.Can("inventory.categories.read"))
+            {
+                MenuItems.Add(new MenuEntry("Categorías", pages.InventoryCategories));
+            }
+
             if (session.Can("inventory.units.read"))
             {
                 MenuItems.Add(new MenuEntry("Unidades", pages.InventoryUnits));

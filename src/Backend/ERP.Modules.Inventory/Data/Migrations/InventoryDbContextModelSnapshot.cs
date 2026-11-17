@@ -23,7 +23,7 @@ namespace ERP.Modules.Inventory.Data.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("ERP.Modules.Inventory.Models.Product", b =>
+            modelBuilder.Entity("ERP.Modules.Inventory.Models.Category", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -42,11 +42,81 @@ namespace ERP.Modules.Inventory.Data.Migrations
                         .HasColumnType("boolean")
                         .HasColumnName("is_active");
 
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("name");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTimeOffset?>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at_utc");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_categories");
+
+                    b.HasAlternateKey("TenantId", "Id")
+                        .HasName("ak_categories_tenant_id_id");
+
+                    b.ToTable("categories", "inventory");
+                });
+
+            modelBuilder.Entity("ERP.Modules.Inventory.Models.Product", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Barcode")
+                        .HasMaxLength(25)
+                        .HasColumnType("character varying(25)")
+                        .HasColumnName("barcode");
+
+                    b.Property<Guid?>("CategoryId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("category_id");
+
+                    b.Property<decimal?>("Cost")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
+                        .HasColumnName("cost");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("description");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
+
                     b.Property<string>("Kind")
                         .IsRequired()
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)")
                         .HasColumnName("kind");
+
+                    b.Property<decimal?>("MinStock")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
+                        .HasColumnName("min_stock");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -69,6 +139,10 @@ namespace ERP.Modules.Inventory.Data.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("tenant_id");
 
+                    b.Property<bool>("TracksInventory")
+                        .HasColumnType("boolean")
+                        .HasColumnName("tracks_inventory");
+
                     b.Property<Guid>("UnitId")
                         .HasColumnType("uuid")
                         .HasColumnName("unit_id");
@@ -81,8 +155,22 @@ namespace ERP.Modules.Inventory.Data.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("updated_by");
 
+                    b.Property<string>("VatTreatment")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("vat_treatment");
+
                     b.HasKey("Id")
                         .HasName("pk_products");
+
+                    b.HasIndex("TenantId", "Barcode")
+                        .IsUnique()
+                        .HasDatabaseName("ix_products_tenant_id_barcode")
+                        .HasFilter("barcode IS NOT NULL");
+
+                    b.HasIndex("TenantId", "CategoryId")
+                        .HasDatabaseName("ix_products_tenant_id_category_id");
 
                     b.HasIndex("TenantId", "Sku")
                         .IsUnique()
@@ -152,6 +240,13 @@ namespace ERP.Modules.Inventory.Data.Migrations
 
             modelBuilder.Entity("ERP.Modules.Inventory.Models.Product", b =>
                 {
+                    b.HasOne("ERP.Modules.Inventory.Models.Category", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "CategoryId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_products_categories_tenant_id_category_id");
+
                     b.HasOne("ERP.Modules.Inventory.Models.Unit", null)
                         .WithMany()
                         .HasForeignKey("TenantId", "UnitId")

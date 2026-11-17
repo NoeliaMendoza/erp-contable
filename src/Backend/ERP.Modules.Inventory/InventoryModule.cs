@@ -11,7 +11,7 @@ using Microsoft.Extensions.DependencyInjection;
 namespace ERP.Modules.Inventory;
 
 /// <summary>
-/// Módulo Inventario (responsable: Mendoza). Estado: catálogo de unidades y productos/servicios <b>implementado</b>;
+/// Módulo Inventario (responsable: Mendoza). Estado: catálogo de unidades, categorías y productos/servicios <b>implementado</b>;
 /// existencias, movimientos y kardex <b>pendientes</b> (INV-02 en adelante).
 /// </summary>
 public static class InventoryModule
@@ -26,6 +26,7 @@ public static class InventoryModule
         services.AddModuleDbContext<InventoryDbContext>(configuration, InventoryDbContext.Schema);
         services.AddScoped<UnitService>();
         services.AddScoped<ProductService>();
+        services.AddScoped<CategoryService>();
         services.AddScoped<IProductCatalog, ProductCatalog>();
         services.AddValidatorsFromAssemblyContaining<SaveUnitRequestValidator>();
         services.AddSingleton<IPermissionProvider, InventoryPermissionProvider>();
@@ -39,6 +40,8 @@ public static class InventoryPermissions
     public const string UnitsWrite = "inventory.units.write";
     public const string ProductsRead = "inventory.products.read";
     public const string ProductsWrite = "inventory.products.write";
+    public const string CategoriesRead = "inventory.categories.read";
+    public const string CategoriesWrite = "inventory.categories.write";
 
     // Siguientes entregas (todavía sin endpoints).
     public const string WarehousesManage = "inventory.warehouses.manage";
@@ -54,6 +57,8 @@ public sealed class InventoryPermissionProvider : IPermissionProvider
         new(InventoryPermissions.UnitsWrite, InventoryModule.Module, "Crear, editar y desactivar unidades de medida"),
         new(InventoryPermissions.ProductsRead, InventoryModule.Module, "Consultar productos y servicios"),
         new(InventoryPermissions.ProductsWrite, InventoryModule.Module, "Crear, editar y desactivar productos y servicios"),
+        new(InventoryPermissions.CategoriesRead, InventoryModule.Module, "Consultar categorías del catálogo"),
+        new(InventoryPermissions.CategoriesWrite, InventoryModule.Module, "Crear, editar y desactivar categorías del catálogo"),
         new(InventoryPermissions.WarehousesManage, InventoryModule.Module, "Administrar bodegas"),
         new(InventoryPermissions.MovementsRegister, InventoryModule.Module, "Registrar movimientos de inventario"),
         new(InventoryPermissions.KardexRead, InventoryModule.Module, "Consultar kardex y existencias"),

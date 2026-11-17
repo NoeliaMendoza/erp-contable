@@ -28,6 +28,8 @@ public sealed class PageFactory(ErpApiClient api, SessionState session, Frontend
     public UnitsViewModel InventoryUnits() => new(new InventoryApi(api), session);
 
     public ProductsViewModel InventoryProducts() => new(new InventoryApi(api), session);
+
+    public CategoriesViewModel InventoryCategories() => new(new InventoryApi(api), session);
 }
 
 /// <summary>Módulos funcionales conocidos por el escritorio (el código coincide con tenant_features en la API).</summary>

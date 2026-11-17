@@ -16,11 +16,13 @@ namespace ERP.Modules.Inventory.Controllers;
 public sealed class ProductsController(ProductService service) : ApiControllerBase
 {
     /// <param name="kind">Filtro opcional: Product o Service.</param>
+    /// <param name="categoryId">Filtro opcional por categoría.</param>
+    /// <param name="search">Busca en SKU, nombre y código de barras.</param>
     [HttpGet]
     [RequirePermission(InventoryPermissions.ProductsRead)]
     public async Task<IActionResult> List(
         [FromQuery] int page = 1, [FromQuery] int pageSize = PageRequest.DefaultPageSize,
-        [FromQuery] string? search = null, [FromQuery] string? kind = null, [FromQuery] bool? isActive = null,
+        [FromQuery] string? search = null, [FromQuery] string? kind = null, [FromQuery] bool? isActive = null, [FromQuery] Guid? categoryId = null,
         CancellationToken ct = default)
     {
         ProductKind? kindFilter = null;
@@ -35,7 +37,7 @@ public sealed class ProductsController(ProductService service) : ApiControllerBa
             kindFilter = parsed;
         }
 
-        return Ok(await service.ListAsync(new PageRequest(page, pageSize, search), kindFilter, isActive, ct));
+        return Ok(await service.ListAsync(new PageRequest(page, pageSize, search), kindFilter, isActive, categoryId, ct));
     }
 
     [HttpGet("{id:guid}")]

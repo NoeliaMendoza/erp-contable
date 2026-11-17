@@ -1,6 +1,37 @@
 namespace ERP.Modules.Inventory.Contracts;
 
-public sealed record ProductSummary(Guid ProductId, string Code, string Name, bool IsService, string UnitCode, bool IsActive);
+/// <summary>
+/// Tratamiento de IVA del artículo. NO guarda porcentajes: Ventas/Compras resuelven el código SRI y el
+/// porcentaje vigente en la fecha del documento con <c>TaxRateCatalog</c> (ninguna tarifa es constante).
+/// </summary>
+public enum VatTreatment
+{
+    /// <summary>Gravado con la tarifa general vigente.</summary>
+    Standard = 1,
+
+    /// <summary>Gravado con tarifa 0 %.</summary>
+    ZeroRated = 2,
+
+    /// <summary>Exento de IVA.</summary>
+    Exempt = 3,
+
+    /// <summary>No objeto de IVA.</summary>
+    NotSubject = 4,
+}
+
+/// <param name="Code">SKU (código principal en la factura).</param>
+/// <param name="Barcode">Código de barras / código auxiliar; null si no tiene.</param>
+/// <param name="TracksInventory">false para servicios y artículos sin control de stock: no generan movimientos.</param>
+public sealed record ProductSummary(
+    Guid ProductId,
+    string Code,
+    string Name,
+    bool IsService,
+    string UnitCode,
+    bool IsActive,
+    VatTreatment VatTreatment,
+    bool TracksInventory,
+    string? Barcode);
 
 public sealed record StockLevel(Guid ProductId, Guid WarehouseId, decimal QuantityOnHand, decimal QuantityReserved);
 

@@ -17,40 +17,63 @@ public sealed record KindOption(string? Value, string Label)
         [new("Product", "Producto"), new("Service", "Servicio")];
 }
 
+/// <summary>Opción de categoría para selectores: Id null = "sin categoría" (formulario) o "todas" (filtro).</summary>
+public sealed record CategoryOption(Guid? Id, string Label);
+
 /// <summary>
-/// Catálogo de productos y servicios: listado con filtro por tipo, búsqueda, paginación y formulario.
-/// No muestra existencias: el stock llegará con los movimientos de inventario.
+/// Catálogo de productos y servicios: listado con filtros, búsqueda (también por código de barras), paginación
+/// y la ficha completa del artículo. No muestra existencias: el stock llegará con los movimientos de inventario.
 /// </summary>
 public sealed partial class ProductsViewModel : ViewModelBase
 {
     private const int PageSize = 20;
+    private static readonly CategoryOption NoCategory = new(null, "Sin categoría");
+    private static readonly CategoryOption AllCategories = new(null, "Todas las categorías");
     private readonly InventoryApi _api;
 
     public ProductsViewModel(InventoryApi api, SessionState session)
     {
         _api = api;
         CanWrite = session.Can("inventory.products.write");
+        CanReadCategories = session.Can("inventory.categories.read");
         KindFilter = KindOption.Filters[0];
         FormKind = KindOption.FormKinds[0];
+        CategoryFilter = AllCategories;
+        FormCategory = NoCategory;
+        CategoryFilters.Add(AllCategories);
+        FormCategories.Add(NoCategory);
         _ = InitializeAsync();
     }
 
     public bool CanWrite { get; }
 
+    public bool CanReadCategories { get; }
+
     public IReadOnlyList<KindOption> KindFilters => KindOption.Filters;
 
     public IReadOnlyList<KindOption> FormKinds => KindOption.FormKinds;
+
+    public IReadOnlyList<VatOption> VatOptions => VatOption.All;
 
     public ObservableCollection<ProductItem> Products { get; } = [];
 
     /// <summary>Unidades ACTIVAS de la empresa activa para el selector.</summary>
     public ObservableCollection<UnitItem> Units { get; } = [];
 
+    /// <summary>"Todas las categorías" + categorías activas.</summary>
+    public ObservableCollection<CategoryOption> CategoryFilters { get; } = [];
+
+    /// <summary>"Sin categoría" + categorías activas.</summary>
+    public ObservableCollection<CategoryOption> FormCategories { get; } = [];
+
     [ObservableProperty]
     public partial string? Search { get; set; }
 
     [ObservableProperty]
     public partial KindOption KindFilter { get; set; }
+
+    [ObservableProperty]
+    public partial CategoryOption CategoryFilter { get; set; }
 
     [ObservableProperty]
     public partial bool IncludeInactive { get; set; }
@@ -71,7 +94,7 @@ public sealed partial class ProductsViewModel : ViewModelBase
 
     public bool IsEmpty => TotalCount == 0 && !IsBusy;
 
-    // Formulario
+    // ── Formulario ──
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(FormTitle))]
     public partial ProductItem? Editing { get; set; }
@@ -83,13 +106,38 @@ public sealed partial class ProductsViewModel : ViewModelBase
     public partial string Name { get; set; } = string.Empty;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsProduct))]
     public partial KindOption FormKind { get; set; }
 
     [ObservableProperty]
     public partial UnitItem? FormUnit { get; set; }
 
     [ObservableProperty]
+    public partial CategoryOption FormCategory { get; set; }
+
+    /// <summary>Sin valor por defecto a propósito: el IVA siempre lo elige el usuario.</summary>
+    [ObservableProperty]
+    public partial VatOption? FormVat { get; set; }
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(MarginText))]
     public partial string PriceText { get; set; } = "0";
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(MarginText))]
+    public partial string? CostText { get; set; }
+
+    [ObservableProperty]
+    public partial string? Barcode { get; set; }
+
+    [ObservableProperty]
+    public partial string? Description { get; set; }
+
+    [ObservableProperty]
+    public partial bool TracksInventory { get; set; } = true;
+
+    [ObservableProperty]
+    public partial string? MinStockText { get; set; }
 
     [ObservableProperty]
     public partial string? SkuError { get; set; }
@@ -104,6 +152,24 @@ public sealed partial class ProductsViewModel : ViewModelBase
     public partial string? PriceError { get; set; }
 
     [ObservableProperty]
+    public partial string? VatError { get; set; }
+
+    [ObservableProperty]
+    public partial string? CategoryError { get; set; }
+
+    [ObservableProperty]
+    public partial string? CostError { get; set; }
+
+    [ObservableProperty]
+    public partial string? BarcodeError { get; set; }
+
+    [ObservableProperty]
+    public partial string? DescriptionError { get; set; }
+
+    [ObservableProperty]
+    public partial string? MinStockError { get; set; }
+
+    [ObservableProperty]
     public partial string? SuccessMessage { get; set; }
 
     [ObservableProperty]
@@ -111,11 +177,41 @@ public sealed partial class ProductsViewModel : ViewModelBase
 
     public string FormTitle => Editing is null ? "Nuevo producto o servicio" : $"Editar {Editing.Sku}";
 
+    /// <summary>Un servicio nunca controla inventario: la casilla y el stock mínimo solo aplican a productos.</summary>
+    public bool IsProduct => FormKind?.Value == "Product";
+
+    /// <summary>Margen sobre el precio de venta, solo informativo: (precio − costo) / precio.</summary>
+    public string MarginText =>
+        PriceParser.TryParse(PriceText, out var price) && price > 0
+        && PriceParser.TryParse(CostText, out var cost)
+            ? $"Margen: {(price - cost) / price:P1}"
+            : string.Empty;
+
     partial void OnKindFilterChanged(KindOption value) => _ = SearchNowAsync();
+
+    partial void OnCategoryFilterChanged(CategoryOption value) => _ = SearchNowAsync();
+
+    partial void OnFormKindChanged(KindOption value)
+    {
+        TracksInventory = value?.Value == "Product";
+        if (!TracksInventory)
+        {
+            MinStockText = null;
+        }
+    }
+
+    partial void OnTracksInventoryChanged(bool value)
+    {
+        if (!value)
+        {
+            MinStockText = null;
+        }
+    }
 
     private async Task InitializeAsync()
     {
         await LoadUnitsAsync();
+        await LoadCategoriesAsync();
         await LoadAsync();
     }
 
@@ -129,10 +225,30 @@ public sealed partial class ProductsViewModel : ViewModelBase
         }
     });
 
+    private Task LoadCategoriesAsync()
+    {
+        if (!CanReadCategories)
+        {
+            return Task.CompletedTask;
+        }
+
+        return RunAsync(async () =>
+        {
+            var categories = await _api.ListCategoriesAsync(1, 100, null, isActive: true);
+            foreach (var category in categories.Items)
+            {
+                var option = new CategoryOption(category.Id, category.Name);
+                CategoryFilters.Add(option);
+                FormCategories.Add(option);
+            }
+        });
+    }
+
     [RelayCommand]
     private Task LoadAsync() => RunAsync(async () =>
     {
-        var result = await _api.ListProductsAsync(Page, PageSize, Search, KindFilter?.Value, IncludeInactive ? null : true);
+        var result = await _api.ListProductsAsync(
+            Page, PageSize, Search, KindFilter?.Value, IncludeInactive ? null : true, CategoryFilter?.Id);
         Products.Clear();
         foreach (var product in result.Items)
         {
@@ -184,7 +300,17 @@ public sealed partial class ProductsViewModel : ViewModelBase
         FormKind = FormKinds.First(k => k.Value == product.Kind);
         FormUnit = Units.FirstOrDefault(u => u.Id == product.UnitId)
             ?? new UnitItem(product.UnitId, product.UnitCode, product.UnitName, IsActive: false);
+        FormCategory = product.CategoryId is null
+            ? NoCategory
+            : FormCategories.FirstOrDefault(c => c.Id == product.CategoryId)
+              ?? new CategoryOption(product.CategoryId, $"{product.CategoryName} (inactiva)");
+        FormVat = VatOptions.FirstOrDefault(v => v.Value == product.VatTreatment);
         PriceText = product.Price.ToString(CultureInfo.CurrentCulture);
+        CostText = product.Cost?.ToString(CultureInfo.CurrentCulture);
+        Barcode = product.Barcode;
+        Description = product.Description;
+        TracksInventory = product.TracksInventory;
+        MinStockText = product.MinStock?.ToString(CultureInfo.CurrentCulture);
         ClearMessages();
     }
 
@@ -196,7 +322,14 @@ public sealed partial class ProductsViewModel : ViewModelBase
         Name = string.Empty;
         FormKind = FormKinds[0];
         FormUnit = null;
+        FormCategory = NoCategory;
+        FormVat = null;
         PriceText = "0";
+        CostText = null;
+        Barcode = null;
+        Description = null;
+        TracksInventory = true;
+        MinStockText = null;
         ClearMessages();
     }
 
@@ -204,19 +337,11 @@ public sealed partial class ProductsViewModel : ViewModelBase
     private async Task SaveAsync()
     {
         ClearMessages();
-        if (!PriceParser.TryParse(PriceText, out var price))
+        if (!TryBuildRequest(out var request))
         {
-            PriceError = "Ingrese un precio válido, por ejemplo 5,25.";
             return;
         }
 
-        if (FormUnit is null)
-        {
-            UnitError = "Seleccione una unidad de medida.";
-            return;
-        }
-
-        var request = new SaveProduct(Sku, Name, FormKind.Value!, FormUnit.Id, price);
         await RunAsync(async () =>
         {
             try
@@ -233,6 +358,12 @@ public sealed partial class ProductsViewModel : ViewModelBase
                 NameError = FieldError.For(errors, "Name");
                 UnitError = FieldError.For(errors, "UnitId");
                 PriceError = FieldError.For(errors, "Price");
+                VatError = FieldError.For(errors, "VatTreatment");
+                CategoryError = FieldError.For(errors, "CategoryId");
+                CostError = FieldError.For(errors, "Cost");
+                BarcodeError = FieldError.For(errors, "Barcode");
+                DescriptionError = FieldError.For(errors, "Description");
+                MinStockError = FieldError.For(errors, "MinStock") ?? FieldError.For(errors, "TracksInventory");
                 throw;
             }
         });
@@ -241,6 +372,72 @@ public sealed partial class ProductsViewModel : ViewModelBase
         {
             await LoadAsync();
         }
+    }
+
+    /// <summary>Validación local mínima (formato de números y selecciones). Las reglas de negocio las aplica la API.</summary>
+    private bool TryBuildRequest(out SaveProduct request)
+    {
+        request = null!;
+        var valid = true;
+
+        if (!PriceParser.TryParse(PriceText, out var price))
+        {
+            PriceError = "Ingrese un precio válido, por ejemplo 5,25.";
+            valid = false;
+        }
+
+        decimal? cost = null;
+        if (!string.IsNullOrWhiteSpace(CostText))
+        {
+            if (PriceParser.TryParse(CostText, out var parsedCost))
+            {
+                cost = parsedCost;
+            }
+            else
+            {
+                CostError = "Ingrese un costo válido, por ejemplo 3,20, o déjelo vacío.";
+                valid = false;
+            }
+        }
+
+        var tracks = IsProduct && TracksInventory;
+        decimal? minStock = null;
+        if (tracks && !string.IsNullOrWhiteSpace(MinStockText))
+        {
+            if (PriceParser.TryParse(MinStockText, out var parsedMin))
+            {
+                minStock = parsedMin;
+            }
+            else
+            {
+                MinStockError = "Ingrese una cantidad válida, por ejemplo 10, o déjelo vacío.";
+                valid = false;
+            }
+        }
+
+        if (FormUnit is null)
+        {
+            UnitError = "Seleccione una unidad de medida.";
+            valid = false;
+        }
+
+        if (FormVat is null)
+        {
+            VatError = "Seleccione el tratamiento de IVA.";
+            valid = false;
+        }
+
+        if (!valid)
+        {
+            return false;
+        }
+
+        request = new SaveProduct(
+            Sku, Name, FormKind.Value!, FormUnit!.Id, price, FormVat!.Value, FormCategory?.Id,
+            string.IsNullOrWhiteSpace(Barcode) ? null : Barcode,
+            string.IsNullOrWhiteSpace(Description) ? null : Description,
+            cost, tracks, minStock);
+        return true;
     }
 
     [RelayCommand]
@@ -275,6 +472,12 @@ public sealed partial class ProductsViewModel : ViewModelBase
         NameError = null;
         UnitError = null;
         PriceError = null;
+        VatError = null;
+        CategoryError = null;
+        CostError = null;
+        BarcodeError = null;
+        DescriptionError = null;
+        MinStockError = null;
     }
 }
 

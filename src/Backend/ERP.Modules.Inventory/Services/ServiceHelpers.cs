@@ -17,4 +17,7 @@ internal static class UniqueViolation
     /// <summary>Respaldo ante carreras: dos solicitudes simultáneas pasan la verificación previa y la base rechaza la segunda.</summary>
     public static bool Is(DbUpdateException ex) =>
         ex.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation };
+
+    /// <summary>Nombre del índice/restricción violado, para distinguir qué campo está duplicado.</summary>
+    public static string? Constraint(DbUpdateException ex) => (ex.InnerException as PostgresException)?.ConstraintName;
 }
