@@ -57,6 +57,63 @@ public sealed class DevelopmentSeeder(DatabaseMigrator migrator)
             KeepsAccounting: false,
             Admins: [BrunoId],
             ReadOnly: [CarlaId]), now, cancellationToken);
+
+        await SeedInventoryAsync(TenantAndinaId, now, cancellationToken);
+    }
+
+    private static async Task SyncSystemRolePermissionsAsync(ERP.Modules.Platform.Data.PlatformDbContext db, Guid tenantId, CancellationToken ct)
+    {
+        var roles = await db.Roles.Where(r => r.IsSystem).ToListAsync(ct);
+        foreach (var role in roles)
+        {
+            IEnumerable<string> expected = role.Name switch
+            {
+                "Administrador" => AllPermissionCodes(),
+                "Consulta" => ReadOnlyPermissionCodes,
+                _ => [],
+            };
+
+            var existing = await db.RolePermissions.Where(rp => rp.RoleId == role.Id).Select(rp => rp.PermissionCode).ToListAsync(ct);
+            foreach (var code in expected.Except(existing, StringComparer.Ordinal))
+            {
+                db.RolePermissions.Add(RolePermission.Create(tenantId, role.Id, code));
+            }
+        }
+
+        await db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>Permisos del rol "Consulta": solo lectura.</summary>
+    internal static readonly string[] ReadOnlyPermissionCodes =
+    [
+        .. PlatformPermissions.ReadOnly,
+        InventoryPermissions.UnitsRead,
+        InventoryPermissions.ProductsRead,
+    ];
+
+    /// <summary>Catálogo ficticio mínimo (ejemplo del plan: cuadernos a USD 5) para la empresa que vende productos.</summary>
+    private async Task SeedInventoryAsync(Guid tenantId, DateTimeOffset now, CancellationToken ct)
+    {
+        var session = TenantSession.ForSystem(tenantId);
+        await using var db = migrator.CreateInventoryContext(session);
+        await using var tx = await db.Database.BeginTransactionAsync(ct);
+
+        if (await db.Units.AnyAsync(ct))
+        {
+            return;
+        }
+
+        var und = ERP.Modules.Inventory.Models.Unit.Create(Guid.CreateVersion7(), tenantId, "UND", "Unidad", now, null);
+        var hora = ERP.Modules.Inventory.Models.Unit.Create(Guid.CreateVersion7(), tenantId, "HORA", "Hora", now, null);
+        db.Units.AddRange(und, hora);
+        db.Products.AddRange(
+            ERP.Modules.Inventory.Models.Product.Create(Guid.CreateVersion7(), tenantId, "CUAD-001", "Cuaderno universitario 100 hojas",
+                ERP.Modules.Inventory.Models.ProductKind.Product, und.Id, 5.00m, now, null),
+            ERP.Modules.Inventory.Models.Product.Create(Guid.CreateVersion7(), tenantId, "SRV-INST", "Servicio de instalación",
+                ERP.Modules.Inventory.Models.ProductKind.Service, hora.Id, 25.00m, now, null));
+
+        await db.SaveChangesAsync(ct);
+        await tx.CommitAsync(ct);
     }
 
     private async Task SeedUsersAsync(DateTimeOffset now, CancellationToken ct)
@@ -88,6 +145,9 @@ public sealed class DevelopmentSeeder(DatabaseMigrator migrator)
 
         if (await db.Tenants.AnyAsync(t => t.Id == seed.TenantId, ct))
         {
+            // Empresa ya sembrada: solo agrega a los roles del sistema los permisos nuevos que publiquen los módulos.
+            await SyncSystemRolePermissionsAsync(db, seed.TenantId, ct);
+            await tx.CommitAsync(ct);
             return;
         }
 
@@ -106,7 +166,7 @@ public sealed class DevelopmentSeeder(DatabaseMigrator migrator)
             db.RolePermissions.Add(RolePermission.Create(seed.TenantId, adminRole.Id, code));
         }
 
-        foreach (var code in PlatformPermissions.ReadOnly)
+        foreach (var code in ReadOnlyPermissionCodes)
         {
             db.RolePermissions.Add(RolePermission.Create(seed.TenantId, readRole.Id, code));
         }

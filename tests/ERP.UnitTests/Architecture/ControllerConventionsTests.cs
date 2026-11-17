@@ -16,6 +16,7 @@ public sealed class ControllerConventionsTests
     [
         typeof(PlatformModule).Assembly,
         typeof(ERP.Modules.Accounting.AccountingModule).Assembly,
+        typeof(ERP.Modules.Inventory.InventoryModule).Assembly,
     ];
 
     private static IEnumerable<Type> Controllers() => ModuleAssemblies

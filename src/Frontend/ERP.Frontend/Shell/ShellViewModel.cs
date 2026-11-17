@@ -31,6 +31,19 @@ public sealed partial class ShellViewModel : ViewModelBase
             MenuItems.Add(new MenuEntry("Sucursales", pages.Branches));
         }
 
+        if (session.EnabledFeatures.Contains("inventory"))
+        {
+            if (session.Can("inventory.products.read"))
+            {
+                MenuItems.Add(new MenuEntry("Productos y servicios", pages.InventoryProducts));
+            }
+
+            if (session.Can("inventory.units.read"))
+            {
+                MenuItems.Add(new MenuEntry("Unidades", pages.InventoryUnits));
+            }
+        }
+
         foreach (var module in FrontendModules.Pending.Where(m => session.EnabledFeatures.Contains(m.FeatureCode)))
         {
             MenuItems.Add(new MenuEntry(module.Title, () => pages.Placeholder(module)));

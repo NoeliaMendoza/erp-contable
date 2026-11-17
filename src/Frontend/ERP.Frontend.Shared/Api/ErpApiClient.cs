@@ -33,9 +33,24 @@ public sealed class ErpApiClient(HttpClient http)
         return await ReadAsync<Branch>(response, ct);
     }
 
-    private async Task<T> GetAsync<T>(string url, CancellationToken ct)
+    /// <summary>
+    /// GET genérico. Punto de extensión para los clientes de cada módulo (p. ej. <c>InventoryApi</c>):
+    /// reutilizan cabeceras de sesión y traducción de errores sin editar esta clase.
+    /// </summary>
+    public async Task<T> GetAsync<T>(string url, CancellationToken ct = default)
     {
         using var response = await SendAsync(() => http.GetAsync(url, ct));
+        return await ReadAsync<T>(response, ct);
+    }
+
+    /// <summary>POST/PUT/PATCH genérico con cuerpo JSON (camelCase). Ver <see cref="GetAsync{T}"/>.</summary>
+    public async Task<T> SendJsonAsync<T>(HttpMethod method, string url, object body, CancellationToken ct = default)
+    {
+        using var response = await SendAsync(() =>
+        {
+            var request = new HttpRequestMessage(method, url) { Content = JsonContent.Create(body, body.GetType(), options: Json) };
+            return http.SendAsync(request, ct);
+        });
         return await ReadAsync<T>(response, ct);
     }
 
