@@ -62,7 +62,7 @@
     <!-- Listado -->
     <Border Classes="card">
       <StackPanel Spacing="4">
-        <Grid ColumnDefinitions="120,*,100,Auto">
+        <Grid ColumnDefinitions="120,*,100,260">
           <TextBlock Grid.Column="0" Classes="muted" Text="Código" />
           <TextBlock Grid.Column="1" Classes="muted" Text="Nombre" />
           <TextBlock Grid.Column="2" Classes="muted" Text="Estado" />
@@ -72,7 +72,7 @@
         <ItemsControl ItemsSource="{Binding Units}">
           <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="inv:UnitItem">
-              <Grid ColumnDefinitions="120,*,100,Auto" Margin="0,4">
+              <Grid ColumnDefinitions="120,*,100,260" Margin="0,4">
                 <TextBlock Grid.Column="0" FontWeight="SemiBold" Text="{Binding Code}" VerticalAlignment="Center" />
                 <TextBlock Grid.Column="1" Text="{Binding Name}" VerticalAlignment="Center" />
                 <TextBlock Grid.Column="2" Classes="muted" Text="{Binding Status}" VerticalAlignment="Center" />
