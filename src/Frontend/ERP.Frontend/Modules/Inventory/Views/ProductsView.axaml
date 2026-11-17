@@ -100,7 +100,7 @@
     <!-- Listado -->
     <Border Classes="card">
       <StackPanel Spacing="4">
-        <Grid ColumnDefinitions="120,*,90,80,100,90,Auto">
+        <Grid ColumnDefinitions="120,*,90,80,100,90,260">
           <TextBlock Grid.Column="0" Classes="muted" Text="SKU" />
           <TextBlock Grid.Column="1" Classes="muted" Text="Nombre" />
           <TextBlock Grid.Column="2" Classes="muted" Text="Tipo" />
@@ -113,7 +113,7 @@
         <ItemsControl ItemsSource="{Binding Products}">
           <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="inv:ProductItem">
-              <Grid ColumnDefinitions="120,*,90,80,100,90,Auto" Margin="0,4">
+              <Grid ColumnDefinitions="120,*,90,80,100,90,260" Margin="0,4">
                 <TextBlock Grid.Column="0" FontWeight="SemiBold" Text="{Binding Sku}" VerticalAlignment="Center" />
                 <TextBlock Grid.Column="1" Text="{Binding Name}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                 <TextBlock Grid.Column="2" Text="{Binding KindLabel}" VerticalAlignment="Center" />
