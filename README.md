@@ -1,4 +1,6 @@
-# ERP Contable
+<p align="center"><img src="docs/assets/orvix-logo.svg" alt="Orvix" height="72"></p>
+
+# Orvix — ERP contable
 
 Base técnica (*foundation*) de un ERP contable SaaS multi-tenant de escritorio para contribuyentes en Ecuador.
 Monolito modular **.NET 10 LTS** · **ASP.NET Core** · **PostgreSQL + RLS** · **Avalonia** · **xUnit v3**.
