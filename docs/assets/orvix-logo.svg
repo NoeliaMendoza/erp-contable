@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="340" height="112" viewBox="0 0 170 56" role="img" aria-label="Orvix">
+  <title>Orvix</title>
+  <rect x="6" y="6" width="44" height="44" rx="12" fill="#1F7A78"/>
+  <circle cx="24" cy="28" r="10" fill="none" stroke="#FFFFFF" stroke-width="4.5"/>
+  <path d="M33 19 L45 37 M45 19 L33 37" stroke="#D4F36B" stroke-width="4.5" stroke-linecap="round"/>
+  <text x="60" y="37" font-family="Poppins, 'Segoe UI', Inter, Arial, sans-serif" font-size="27" font-weight="500" fill="#1B1F23">orvix</text>
+</svg>

@@ -1,13 +1,15 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:ERP.Frontend.Shell"
+             xmlns:ui="using:ERP.Frontend.Shared.Controls"
              x:Class="ERP.Frontend.Shell.ShellView"
              x:DataType="vm:ShellViewModel">
   <Grid ColumnDefinitions="240,*">
-    <Border Grid.Column="0" Background="{StaticResource ErpSidebarBrush}" Padding="12">
+    <Border Grid.Column="0" Background="{StaticResource ErpSidebarBrush}"
+            BorderBrush="{StaticResource ErpBorderBrush}" BorderThickness="0,0,1,0" Padding="12">
       <DockPanel>
-        <StackPanel DockPanel.Dock="Top" Spacing="2" Margin="8,8,8,20">
-          <TextBlock Classes="sidebar-title" Text="ERP Contable" />
+        <StackPanel DockPanel.Dock="Top" Spacing="8" Margin="8,8,8,20">
+          <ui:OrvixLogo Height="32" />
           <TextBlock Classes="sidebar-muted" Text="{Binding TenantName}" />
         </StackPanel>
         <StackPanel DockPanel.Dock="Bottom" Spacing="6" Margin="4">
@@ -15,7 +17,7 @@
           <Button Content="Cambiar de empresa" Command="{Binding ChangeTenantCommand}" HorizontalAlignment="Stretch" />
           <Button Content="Cerrar sesión" Command="{Binding SignOutCommand}" HorizontalAlignment="Stretch" />
         </StackPanel>
-        <ListBox ItemsSource="{Binding MenuItems}" SelectedItem="{Binding SelectedItem}"
+        <ListBox Classes="nav" ItemsSource="{Binding MenuItems}" SelectedItem="{Binding SelectedItem}"
                  Background="Transparent" AutomationProperties.Name="Menú de módulos">
           <ListBox.ItemTemplate>
             <DataTemplate x:DataType="vm:MenuEntry">

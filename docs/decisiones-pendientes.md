@@ -15,7 +15,7 @@ Supuestos actuales son **explícitos y reversibles**. Cerrar cada decisión con 
 | D-09 | Políticas de respaldo y retención | Ninguna automatizada | Operación | Líder |
 | D-10 | Usuarios reales de GitHub y asignación definitiva | CODEOWNERS comentado | Revisiones | Equipo |
 | D-11 | Rama y base de Neon | **Decidido:** proyecto `erp-contable-multitenant`, base `neondb`, ramas `production` → `development` → `dev-<nombre>` (docs/neon.md) | Integración | Líder |
-| D-12 | Nombre comercial | **Decidido:** "ERP Contable", repositorio `erp-contable`, equipo LCS | Marca | Equipo |
+| D-12 | Nombre comercial | **Decidido:** producto "Orvix", repositorio `erp-contable`, equipo LCS; logo monograma y paleta en docs/guia-estilo.md | Marca | Equipo |
 | D-13 | Licencias QuestPDF/ClosedXML para uso comercial | No incluidos aún | Reportes | Int. 6 |
 | D-14 | Hosting de la API (no es Neon) | Local | Despliegue | Líder |
 | D-15 | Rechazar RUC de sociedades si falla módulo 11 | Solo advertencia | Validación de clientes/proveedores | Int. 3 + Int. 4 |
