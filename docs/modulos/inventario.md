@@ -1,6 +1,6 @@
 # Módulo Inventario — catálogo (INV-01)
 
-Responsable: **Mendoza** · Rama: `feature/mendoza-productos` · Esquema PostgreSQL: `inventory`
+Responsable: **Mendoza** · Rama: `feature/inventory-productos` · Esquema PostgreSQL: `inventory`
 
 ## Alcance de esta entrega
 
