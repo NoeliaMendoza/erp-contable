@@ -1,0 +1,20 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="ERP.Frontend.Shared.Controls.OrvixLogo"
+             AutomationProperties.Name="Orvix">
+  <!-- Logo de Orvix: monograma "Ox" + palabra. Se escala con Height (p. ej. Height="32"). -->
+  <Viewbox Stretch="Uniform" HorizontalAlignment="Left">
+    <StackPanel Orientation="Horizontal" Spacing="10">
+      <Canvas Width="44" Height="44">
+        <Border Width="44" Height="44" CornerRadius="{StaticResource ErpRadiusLarge}" Background="{StaticResource ErpPrimaryBrush}" />
+        <Ellipse Canvas.Left="8" Canvas.Top="12" Width="20" Height="20"
+                 Stroke="{StaticResource ErpOnPrimaryBrush}" StrokeThickness="4.5" />
+        <Path Data="M27,13 L39,31 M39,13 L27,31"
+              Stroke="{StaticResource ErpAccentBrush}" StrokeThickness="4.5" StrokeLineCap="Round" />
+      </Canvas>
+      <TextBlock x:Name="Wordmark" Text="orvix" VerticalAlignment="Center"
+                 FontSize="{StaticResource ErpFontSizeLogo}" FontWeight="Medium"
+                 Foreground="{StaticResource ErpTextBrush}" />
+    </StackPanel>
+  </Viewbox>
+</UserControl>

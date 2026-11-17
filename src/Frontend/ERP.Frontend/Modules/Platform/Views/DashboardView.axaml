@@ -12,9 +12,9 @@
     <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsBusy}" />
     <TextBlock Classes="error" Text="{Binding ErrorMessage}" IsVisible="{Binding ErrorMessage, Converter={x:Static ObjectConverters.IsNotNull}}" />
 
-    <Border Classes="card">
+    <Border Classes="kpi-mint" HorizontalAlignment="Left" MinWidth="220">
       <StackPanel Spacing="4">
-        <TextBlock Classes="muted" Text="Sucursales registradas" />
+        <TextBlock Text="Sucursales registradas" />
         <TextBlock Classes="kpi" Text="{Binding BranchCount}" />
       </StackPanel>
     </Border>
