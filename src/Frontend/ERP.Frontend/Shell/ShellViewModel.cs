@@ -17,11 +17,15 @@ public sealed partial class ShellViewModel : ViewModelBase
 {
     private readonly SessionState _session;
     private readonly PageFactory _pages;
+    private readonly IAuthenticationService _auth;
+    private readonly ErpApiClient _api;
 
-    public ShellViewModel(SessionState session, PageFactory pages, CurrentTenant tenant)
+    public ShellViewModel(SessionState session, PageFactory pages, CurrentTenant tenant, IAuthenticationService auth, ErpApiClient api)
     {
         _session = session;
         _pages = pages;
+        _auth = auth;
+        _api = api;
         TenantName = tenant.Name;
         UserName = session.DisplayName ?? session.UserEmail ?? string.Empty;
 
@@ -77,18 +81,22 @@ public sealed partial class ShellViewModel : ViewModelBase
         }
     }
 
+    /// <summary>Vuelve a la lista de empresas autorizadas sin cerrar la sesión.</summary>
     [RelayCommand]
-    private void ChangeTenant()
+    private Task ChangeTenantAsync() => RunAsync(async () =>
     {
         _session.ClearTenant();
-        _pages.Navigator.NavigateTo(_pages.Login());
-    }
+        var profile = await _api.GetMyProfileAsync();
+        _pages.Navigator.NavigateTo(_pages.TenantSelection(profile));
+    });
 
+    /// <summary>Cierre de sesión local: descarta los tokens y la empresa seleccionada.</summary>
     [RelayCommand]
-    private void SignOut()
+    private async Task SignOutAsync()
     {
         _session.SignOut();
-        _pages.Navigator.NavigateTo(_pages.Login());
+        await _auth.SignOutAsync(CancellationToken.None);
+        _pages.Navigator.NavigateTo(_pages.Login("Sesión cerrada."));
     }
 }
 

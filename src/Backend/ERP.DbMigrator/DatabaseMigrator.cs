@@ -19,6 +19,12 @@ public sealed class DatabaseMigrator(string migratorConnectionString)
             await platform.Database.MigrateAsync(cancellationToken);
         }
 
+        // Credenciales (Identity) y almacén OpenIddict: después de Platform porque referencia platform.users.
+        await using (var auth = CreateAuthContext())
+        {
+            await auth.Database.MigrateAsync(cancellationToken);
+        }
+
         await using var inventory = CreateInventoryContext(TenantSession.ForSystem());
         await inventory.Database.MigrateAsync(cancellationToken);
     }
@@ -29,6 +35,13 @@ public sealed class DatabaseMigrator(string migratorConnectionString)
         PersistenceRegistration.ConfigureNpgsql(options, migratorConnectionString, PlatformDbContext.Schema);
         options.AddInterceptors(new TenantSessionInterceptor(session));
         return new PlatformDbContext(options.Options, session);
+    }
+
+    internal AuthDbContext CreateAuthContext()
+    {
+        var options = new DbContextOptionsBuilder<AuthDbContext>();
+        AuthDbContext.Configure(options, migratorConnectionString);
+        return new AuthDbContext(options.Options);
     }
 
     internal InventoryDbContext CreateInventoryContext(TenantSession session)

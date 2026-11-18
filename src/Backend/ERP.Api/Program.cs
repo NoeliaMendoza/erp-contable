@@ -2,6 +2,7 @@ using System.Diagnostics;
 using ERP.Api.Errors;
 using ERP.Api.Observability;
 using ERP.Api.Security;
+using ERP.Api.Security.Oidc;
 using ERP.BuildingBlocks.Caching;
 using ERP.BuildingBlocks.Tenancy;
 using ERP.Infrastructure.Caching;
@@ -101,6 +102,9 @@ if (app.Environment.IsDevelopment())
 
 app.MapHealthChecks("/health/live", new HealthCheckOptions { Predicate = _ => false });
 app.MapHealthChecks("/health/ready", new HealthCheckOptions { Predicate = c => c.Tags.Contains("ready") });
+
+// Emisor OIDC (Authorization Code + PKCE) y página de inicio de sesión del navegador (PLAT-01).
+app.MapErpOidcEndpoints();
 
 // Controladores MVC de todos los módulos (cada módulo registra su ensamblado en Add<Modulo>Module).
 app.MapControllers();

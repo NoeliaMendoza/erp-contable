@@ -4,7 +4,7 @@
 
 ```text
 Avalonia (MVVM) ──HTTPS/JSON /api/v1──▶ ASP.NET Core
-                                         ├─ Autenticación (dev: X-Dev-User · pendiente: OpenIddict)
+                                         ├─ Autenticación (OIDC: Identity + OpenIddict, Bearer · X-Dev-User solo Development/Testing)
                                          ├─ TenantResolutionMiddleware (X-Tenant-Id = selección, validada contra membresía)
                                          ├─ Autorización por permiso (políticas perm:<código>)
                                          └─ Módulos (casos de uso) ──EF Core/Npgsql──▶ PostgreSQL (RLS FORCE, rol erp_app)

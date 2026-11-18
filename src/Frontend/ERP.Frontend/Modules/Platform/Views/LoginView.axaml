@@ -9,14 +9,25 @@
       <ui:OrvixLogo Height="44" />
       <TextBlock Classes="muted" Text="ERP contable para tu negocio" />
       <TextBlock Classes="muted" TextWrapping="Wrap"
-                 Text="Modo desarrollo: seleccione un usuario ficticio. El inicio de sesión seguro (OIDC + PKCE) está pendiente." />
-      <TextBlock Text="Correo" />
-      <AutoCompleteBox Text="{Binding Email}" ItemsSource="{Binding DemoUsers}" FilterMode="Contains"
-                       AutomationProperties.Name="Correo electrónico" />
-      <Button Classes="primary" Content="Ingresar" Command="{Binding SignInCommand}" IsDefault="True"
-              HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" />
+                 Text="Se abrirá su navegador para ingresar su correo y contraseña de forma segura. Esta aplicación no ve su contraseña." />
+
+      <Button Classes="primary" Content="Iniciar sesión" Command="{Binding SignInCommand}" IsDefault="True"
+              IsVisible="{Binding !IsWaitingForBrowser}"
+              HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+              AutomationProperties.Name="Iniciar sesión en el navegador" />
+
+      <StackPanel Spacing="8" IsVisible="{Binding IsWaitingForBrowser}">
+        <TextBlock TextWrapping="Wrap"
+                   Text="Complete el inicio de sesión en la ventana del navegador. Al terminar, vuelva a esta aplicación." />
+        <Button Content="Cancelar" Command="{Binding CancelSignInCommand}" IsCancel="True"
+                HorizontalAlignment="Right" AutomationProperties.Name="Cancelar inicio de sesión" />
+      </StackPanel>
+
       <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsBusy}" />
-      <TextBlock Classes="error" Text="{Binding ErrorMessage}" IsVisible="{Binding ErrorMessage, Converter={x:Static ObjectConverters.IsNotNull}}" />
+      <TextBlock Classes="muted" TextWrapping="Wrap" Text="{Binding Notice}"
+                 IsVisible="{Binding Notice, Converter={x:Static ObjectConverters.IsNotNull}}" />
+      <TextBlock Classes="error" TextWrapping="Wrap" Text="{Binding ErrorMessage}"
+                 IsVisible="{Binding ErrorMessage, Converter={x:Static ObjectConverters.IsNotNull}}" />
       <TextBlock Classes="muted small" Text="{Binding ApiBaseUrl, StringFormat='API: {0}'}" />
     </StackPanel>
   </Border>

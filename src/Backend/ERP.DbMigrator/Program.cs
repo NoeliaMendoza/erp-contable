@@ -51,8 +51,15 @@ internal static class MigratorProgram
 
         if (commands.Contains("seed-dev"))
         {
-            await new DevelopmentSeeder(migrator).SeedAsync(cts.Token);
+            var demoPassword = configuration[DevelopmentSeeder.DemoPasswordKey];
+            await new DevelopmentSeeder(migrator, demoPassword).SeedAsync(cts.Token);
             Console.WriteLine("Semillas de desarrollo cargadas (datos ficticios).");
+            if (string.IsNullOrWhiteSpace(demoPassword))
+            {
+                Console.WriteLine(
+                    $"Aviso: no se configuró {DevelopmentSeeder.DemoPasswordKey}; los usuarios demo no podrán iniciar sesión (OIDC). " +
+                    "Ver docs/modulos/autenticacion.md.");
+            }
         }
 
         return 0;
