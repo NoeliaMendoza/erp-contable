@@ -73,7 +73,25 @@ Dependencias entre módulos solo vía `*.Contracts` 🔒 (`DependencyRulesTests`
 ## 7. Interfaz (Avalonia)
 
 - Colores, tamaños y espaciados **solo** desde `ERP.Frontend.Shared/Styles/ErpTheme.axaml` 🔒 (prueba `Las_vistas_usan_el_tema_comun...`).
-- Clases disponibles: `h1`, `h2`, `muted`, `error`, `small`, `kpi`, `sidebar*` (TextBlock); `card` (Border); `primary` (Button).
+- Clases disponibles: `h1`, `h2`, `muted`, `error`, `small`, `kpi`, `sidebar*` (TextBlock); `card`, `kpi-lavender`, `kpi-sky`, `kpi-mint` (Border); `primary` (Button); `nav` (ListBox del menú).
+- Logo: control `ui:OrvixLogo` (`ERP.Frontend.Shared.Controls`), escalado con `Height`; `ShowWordmark="False"` muestra solo el monograma. Archivos para documentos: `docs/assets/orvix-logo.svg` y `docs/assets/orvix-icon.svg`.
+
+### Paleta de Orvix
+
+| Uso | Recurso | Color |
+|---|---|---|
+| Primario (botones, acciones, logo) | `ErpPrimaryBrush` / hover `ErpPrimaryDarkBrush` | `#1F7A78` / `#17605E` |
+| Acento lima (ítem activo, etiquetas) | `ErpAccentBrush` + texto `ErpOnAccentBrush` | `#D4F36B` + `#2F3A0A` |
+| Fondo de la app | `ErpSurfaceBrush` | `#EEF1F1` |
+| Tarjetas y menú lateral | `ErpCardBrush`, `ErpSidebarBrush` | `#FFFFFF` |
+| Bordes | `ErpBorderBrush` | `#E3E7E9` |
+| Texto / texto secundario | `ErpTextBrush` / `ErpMutedTextBrush` | `#1B1F23` / `#6B7280` |
+| Indicadores (pasteles) | `ErpKpiLavenderBrush`, `ErpKpiSkyBrush`, `ErpKpiMintBrush` | `#C9B8F5`, `#A9C8FA`, `#9EE3B8` |
+| Éxito / advertencia / error | `ErpSuccessBrush`, `ErpWarningBrush`, `ErpErrorBrush` | `#2E9E6B`, `#E0A12B`, `#D64545` |
+
+- El lima **nunca** se usa como color de texto: sobre blanco no se lee. Solo como fondo con `ErpOnAccentBrush` encima.
+- Sobre un pastel, el texto usa su tono oscuro (`ErpOnKpi*Brush`), no negro.
+- Un solo botón `primary` por pantalla; el resto, botones normales.
 - Espaciado en escala de 4: 4, 8, 12, 16, 24 (`ErpSpacing*`, `ErpPagePadding`).
 - Vistas: `<Nombre>View.axaml` + `<Nombre>ViewModel.cs`, con `x:DataType` (bindings compilados).
 - ViewModels heredan de `ViewModelBase` y usan `RunAsync(...)` para carga y errores.

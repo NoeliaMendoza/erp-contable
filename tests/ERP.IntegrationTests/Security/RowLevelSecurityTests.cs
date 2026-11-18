@@ -28,16 +28,19 @@ public sealed class RowLevelSecurityTests(PostgresFixture db)
     }
 
     [Theory]
-    [InlineData("branches")]
-    [InlineData("taxpayers")]
-    [InlineData("roles")]
-    [InlineData("tenants")]
-    [InlineData("tenant_memberships")]
-    [InlineData("establishments")]
+    [InlineData("platform.branches")]
+    [InlineData("platform.taxpayers")]
+    [InlineData("platform.roles")]
+    [InlineData("platform.tenants")]
+    [InlineData("platform.tenant_memberships")]
+    [InlineData("platform.establishments")]
+    [InlineData("inventory.units")]
+    [InlineData("inventory.products")]
+    [InlineData("inventory.categories")]
     public async Task Sin_contexto_de_tenant_no_se_ve_ninguna_fila(string table)
     {
         await using var conn = await OpenAsync(db.AppConnectionString);
-        Assert.Equal(0L, await ScalarAsync<long>(conn, null, $"SELECT count(*) FROM platform.{table}"));
+        Assert.Equal(0L, await ScalarAsync<long>(conn, null, $"SELECT count(*) FROM {table}"));
     }
 
     [Fact]
@@ -78,6 +81,79 @@ public sealed class RowLevelSecurityTests(PostgresFixture db)
 
         Assert.Equal(0, await ExecuteAsync(conn, tx, $"UPDATE platform.branches SET name = 'x' WHERE tenant_id = '{B}'"));
         Assert.Equal(0, await ExecuteAsync(conn, tx, $"DELETE FROM platform.taxpayers WHERE tenant_id = '{B}'"));
+    }
+
+    [Fact]
+    public async Task La_base_impide_un_producto_con_unidad_de_otra_empresa()
+    {
+        await using var conn = await OpenAsync(db.AppConnectionString);
+        await using var tx = await conn.BeginTransactionAsync(Ct);
+        await SetTenantAsync(conn, tx, A);
+        var unitOfA = await ScalarAsync<Guid>(conn, tx, "SELECT id FROM inventory.units LIMIT 1");
+
+        // Ni siquiera con el contexto correcto se puede apuntar a la unidad de A desde una fila de B:
+        // RLS rechaza tenant_id = B y la FK compuesta (tenant_id, unit_id) impediría el vínculo cruzado.
+        var ex = await Assert.ThrowsAsync<PostgresException>(() => ScalarAsync<int>(conn, tx, $"""
+            INSERT INTO inventory.products (id, tenant_id, sku, name, kind, unit_id, price, vat_treatment, tracks_inventory, is_active, created_at_utc)
+            VALUES (gen_random_uuid(), '{B}', 'HACK', 'Intruso', 'Product', '{unitOfA}', 1, 'Standard', true, true, now()) RETURNING 1
+            """));
+
+        Assert.Contains(ex.SqlState, new[] { PostgresErrorCodes.InsufficientPrivilege, PostgresErrorCodes.ForeignKeyViolation });
+    }
+
+    [Fact]
+    public async Task La_base_impide_asignar_la_categoria_de_otra_empresa()
+    {
+        await using var conn = await OpenAsync(db.AppConnectionString);
+        await using var tx = await conn.BeginTransactionAsync(Ct);
+
+        // Categoría de A creada con el contexto de A.
+        await SetTenantAsync(conn, tx, A);
+        var categoryOfA = await ScalarAsync<Guid>(conn, tx, $"""
+            INSERT INTO inventory.categories (id, tenant_id, name, is_active, created_at_utc)
+            VALUES (gen_random_uuid(), '{A}', 'Cat-' || gen_random_uuid(), true, now()) RETURNING id
+            """);
+
+        // Con el contexto de B, un producto de B no puede apuntar a esa categoría: la FK compuesta
+        // (tenant_id, category_id) solo encuentra categorías de B.
+        await SetTenantAsync(conn, tx, B);
+        var unitOfB = await ScalarAsync<Guid>(conn, tx, $"""
+            INSERT INTO inventory.units (id, tenant_id, code, name, is_active, created_at_utc)
+            VALUES (gen_random_uuid(), '{B}', 'U' || substr(md5(random()::text), 1, 8), 'Unidad', true, now()) RETURNING id
+            """);
+        var ex = await Assert.ThrowsAsync<PostgresException>(() => ScalarAsync<int>(conn, tx, $"""
+            INSERT INTO inventory.products (id, tenant_id, sku, name, kind, unit_id, price, vat_treatment, tracks_inventory, category_id, is_active, created_at_utc)
+            VALUES (gen_random_uuid(), '{B}', 'CAT-HACK', 'Intruso', 'Product', '{unitOfB}', 1, 'Standard', true, '{categoryOfA}', true, now()) RETURNING 1
+            """));
+
+        Assert.Equal(PostgresErrorCodes.ForeignKeyViolation, ex.SqlState);
+    }
+
+    [Fact]
+    public async Task La_base_aplica_las_reglas_de_la_ficha_aunque_falle_el_codigo()
+    {
+        await using var conn = await OpenAsync(db.AppConnectionString);
+        await using var tx = await conn.BeginTransactionAsync(Ct);
+        await SetTenantAsync(conn, tx, A);
+        var unitOfA = await ScalarAsync<Guid>(conn, tx, "SELECT id FROM inventory.units LIMIT 1");
+        await ExecuteAsync(conn, tx, "SAVEPOINT s");
+
+        string[] invalidValues =
+        [
+            "'Service', 'Standard', true, NULL",     // servicio con stock
+            "'Product', 'Standard', false, 5",       // stock mínimo sin control
+            "'Product', 'IVA12', true, NULL",        // IVA desconocido
+        ];
+
+        foreach (var values in invalidValues)
+        {
+            var ex = await Assert.ThrowsAsync<PostgresException>(() => ExecuteAsync(conn, tx, $"""
+                INSERT INTO inventory.products (id, tenant_id, sku, name, unit_id, price, kind, vat_treatment, tracks_inventory, min_stock, is_active, created_at_utc)
+                VALUES (gen_random_uuid(), '{A}', 'CK-' || substr(md5(random()::text), 1, 8), 'Regla', '{unitOfA}', 1, {values}, true, now())
+                """));
+            Assert.Equal(PostgresErrorCodes.CheckViolation, ex.SqlState);
+            await ExecuteAsync(conn, tx, "ROLLBACK TO SAVEPOINT s");
+        }
     }
 
     [Fact]

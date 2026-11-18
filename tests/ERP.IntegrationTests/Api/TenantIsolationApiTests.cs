@@ -141,12 +141,12 @@ public sealed class TenantIsolationApiTests(PostgresFixture db) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Codigo_duplicado_responde_422()
+    public async Task Codigo_duplicado_responde_409()
     {
         var response = await _api.ClientFor(DevelopmentSeeder.AnaEmail, Andina)
             .PostAsJsonAsync("/api/v1/tenant/branches", new CreateBranchRequest("MATRIZ", "Duplicada", null, null), Ct);
 
-        Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
     }
 
     [Fact]

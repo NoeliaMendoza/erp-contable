@@ -17,9 +17,9 @@
                           ErrorMessage="{Binding ErrorMessage}"
                           RetryCommand="{Binding LoadCommand}" />
 
-    <Border Classes="card">
+    <Border Classes="kpi-mint" HorizontalAlignment="Left" MinWidth="220">
       <StackPanel Spacing="4">
-        <TextBlock Classes="muted" Text="Sucursales registradas" />
+        <TextBlock Text="Sucursales registradas" />
         <TextBlock Classes="kpi" Text="{Binding BranchCount}" />
       </StackPanel>
     </Border>

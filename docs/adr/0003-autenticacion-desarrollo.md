@@ -1,6 +1,6 @@
 # ADR-0003: Autenticación de desarrollo temporal
 
-- Estado: Aceptado (temporal, se reemplaza con PLAT-01) · Fecha: 2026-11-13
+- Estado: Reemplazado para el escritorio por [ADR-0004](0004-oidc-identity-openiddict.md) (PLAT-01); se conserva solo para pruebas y curl en Development/Testing · Fecha: 2026-11-13
 
 ## Contexto
 El flujo OIDC (Identity + OpenIddict, Authorization Code + PKCE) es un entregable posterior, pero el flujo vertical necesita una identidad autenticada.

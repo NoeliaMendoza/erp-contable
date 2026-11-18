@@ -1,0 +1,224 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:ERP.Frontend.Modules.Inventory.ViewModels"
+             xmlns:inv="using:ERP.Frontend.Modules.Inventory"
+             x:Class="ERP.Frontend.Modules.Inventory.Views.ProductsView"
+             x:DataType="vm:ProductsViewModel">
+  <StackPanel Spacing="16">
+    <DockPanel>
+      <Button DockPanel.Dock="Right" Content="Actualizar" Command="{Binding LoadCommand}" />
+      <TextBlock Classes="h1" Text="Productos y servicios" />
+    </DockPanel>
+    <TextBlock Classes="muted" TextWrapping="Wrap"
+               Text="Catálogo de artículos. Las existencias (stock) aún no se calculan: llegarán con los movimientos de inventario." />
+
+    <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsBusy}" />
+    <TextBlock Classes="error" Text="{Binding ErrorMessage}" IsVisible="{Binding ErrorMessage, Converter={x:Static ObjectConverters.IsNotNull}}" />
+    <TextBlock Classes="muted" Text="{Binding SuccessMessage}" IsVisible="{Binding SuccessMessage, Converter={x:Static ObjectConverters.IsNotNull}}" />
+
+    <!-- Formulario: ficha del artículo -->
+    <Border Classes="card" IsVisible="{Binding CanWrite}">
+      <StackPanel Spacing="8">
+        <DockPanel>
+          <Button DockPanel.Dock="Right" Content="Limpiar" Command="{Binding NewProductCommand}" />
+          <TextBlock Classes="h2" Text="{Binding FormTitle}" />
+        </DockPanel>
+
+        <!-- Identificación -->
+        <Grid ColumnDefinitions="160,*,220" ColumnSpacing="8">
+          <StackPanel Grid.Column="0" Spacing="4">
+            <TextBlock Text="SKU" />
+            <TextBox Text="{Binding Sku}" PlaceholderText="CUAD-001" AutomationProperties.Name="SKU" />
+            <TextBlock Classes="error" TextWrapping="Wrap" Text="{Binding SkuError}" IsVisible="{Binding SkuError, Converter={x:Static ObjectConverters.IsNotNull}}" />
+          </StackPanel>
+          <StackPanel Grid.Column="1" Spacing="4">
+            <TextBlock Text="Nombre" />
+            <TextBox Text="{Binding Name}" PlaceholderText="Cuaderno universitario 100 hojas" AutomationProperties.Name="Nombre del artículo" />
+            <TextBlock Classes="error" TextWrapping="Wrap" Text="{Binding NameError}" IsVisible="{Binding NameError, Converter={x:Static ObjectConverters.IsNotNull}}" />
+          </StackPanel>
+          <StackPanel Grid.Column="2" Spacing="4">
+            <TextBlock Text="Código de barras (opcional)" />
+            <TextBox Text="{Binding Barcode}" PlaceholderText="7861234567890" AutomationProperties.Name="Código de barras" />
+            <TextBlock Classes="error" TextWrapping="Wrap" Text="{Binding BarcodeError}" IsVisible="{Binding BarcodeError, Converter={x:Static ObjectConverters.IsNotNull}}" />
+          </StackPanel>
+        </Grid>
+
+        <!-- Clasificación -->
+        <Grid ColumnDefinitions="160,*,*" ColumnSpacing="8">
+          <StackPanel Grid.Column="0" Spacing="4">
+            <TextBlock Text="Tipo" />
+            <ComboBox ItemsSource="{Binding FormKinds}" SelectedItem="{Binding FormKind}" HorizontalAlignment="Stretch"
+                      AutomationProperties.Name="Tipo de artículo">
+              <ComboBox.ItemTemplate>
+                <DataTemplate x:DataType="vm:KindOption">
+                  <TextBlock Text="{Binding Label}" />
+                </DataTemplate>
+              </ComboBox.ItemTemplate>
+            </ComboBox>
+          </StackPanel>
+          <StackPanel Grid.Column="1" Spacing="4">
+            <TextBlock Text="Unidad" />
+            <ComboBox ItemsSource="{Binding Units}" SelectedItem="{Binding FormUnit}" HorizontalAlignment="Stretch"
+                      PlaceholderText="Seleccione una unidad" AutomationProperties.Name="Unidad de medida">
+              <ComboBox.ItemTemplate>
+                <DataTemplate x:DataType="inv:UnitItem">
+                  <TextBlock Text="{Binding Display}" />
+                </DataTemplate>
+              </ComboBox.ItemTemplate>
+            </ComboBox>
+            <TextBlock Classes="error" TextWrapping="Wrap" Text="{Binding UnitError}" IsVisible="{Binding UnitError, Converter={x:Static ObjectConverters.IsNotNull}}" />
+          </StackPanel>
+          <StackPanel Grid.Column="2" Spacing="4">
+            <TextBlock Text="Categoría" />
+            <ComboBox ItemsSource="{Binding FormCategories}" SelectedItem="{Binding FormCategory}" HorizontalAlignment="Stretch"
+                      AutomationProperties.Name="Categoría">
+              <ComboBox.ItemTemplate>
+                <DataTemplate x:DataType="vm:CategoryOption">
+                  <TextBlock Text="{Binding Label}" />
+                </DataTemplate>
+              </ComboBox.ItemTemplate>
+            </ComboBox>
+            <TextBlock Classes="error" TextWrapping="Wrap" Text="{Binding CategoryError}" IsVisible="{Binding CategoryError, Converter={x:Static ObjectConverters.IsNotNull}}" />
+          </StackPanel>
+        </Grid>
+
+        <!-- Precio e impuestos -->
+        <Grid ColumnDefinitions="160,160,*" ColumnSpacing="8">
+          <StackPanel Grid.Column="0" Spacing="4">
+            <TextBlock Text="Precio de venta (USD)" />
+            <TextBox Text="{Binding PriceText}" PlaceholderText="5,25" AutomationProperties.Name="Precio en dólares" />
+            <TextBlock Classes="error" TextWrapping="Wrap" Text="{Binding PriceError}" IsVisible="{Binding PriceError, Converter={x:Static ObjectConverters.IsNotNull}}" />
+          </StackPanel>
+          <StackPanel Grid.Column="1" Spacing="4">
+            <TextBlock Text="Costo (opcional)" />
+            <TextBox Text="{Binding CostText}" PlaceholderText="3,20" AutomationProperties.Name="Costo referencial en dólares" />
+            <TextBlock Classes="muted small" Text="{Binding MarginText}" />
+            <TextBlock Classes="error" TextWrapping="Wrap" Text="{Binding CostError}" IsVisible="{Binding CostError, Converter={x:Static ObjectConverters.IsNotNull}}" />
+          </StackPanel>
+          <StackPanel Grid.Column="2" Spacing="4">
+            <TextBlock Text="IVA" />
+            <ComboBox ItemsSource="{Binding VatOptions}" SelectedItem="{Binding FormVat}" HorizontalAlignment="Stretch"
+                      PlaceholderText="Seleccione el tratamiento de IVA" AutomationProperties.Name="Tratamiento de IVA">
+              <ComboBox.ItemTemplate>
+                <DataTemplate x:DataType="inv:VatOption">
+                  <TextBlock Text="{Binding Label}" />
+                </DataTemplate>
+              </ComboBox.ItemTemplate>
+            </ComboBox>
+            <TextBlock Classes="error" TextWrapping="Wrap" Text="{Binding VatError}" IsVisible="{Binding VatError, Converter={x:Static ObjectConverters.IsNotNull}}" />
+          </StackPanel>
+        </Grid>
+
+        <!-- Inventario: solo productos -->
+        <Grid ColumnDefinitions="Auto,160,*" ColumnSpacing="16" IsVisible="{Binding IsProduct}">
+          <CheckBox Grid.Column="0" Content="Controla inventario (stock)" IsChecked="{Binding TracksInventory}"
+                    VerticalAlignment="Bottom" Margin="0,0,0,4" AutomationProperties.Name="Controla inventario" />
+          <StackPanel Grid.Column="1" Spacing="4" IsEnabled="{Binding TracksInventory}">
+            <TextBlock Text="Stock mínimo (opcional)" />
+            <TextBox Text="{Binding MinStockText}" PlaceholderText="10" AutomationProperties.Name="Stock mínimo" />
+          </StackPanel>
+          <TextBlock Grid.Column="2" Classes="muted small" TextWrapping="Wrap" VerticalAlignment="Bottom" Margin="0,0,0,6"
+                     Text="Desmarque si no lleva existencias (por ejemplo, productos por encargo). Los servicios nunca controlan inventario." />
+        </Grid>
+        <TextBlock Classes="error" TextWrapping="Wrap" Text="{Binding MinStockError}" IsVisible="{Binding MinStockError, Converter={x:Static ObjectConverters.IsNotNull}}" />
+
+        <!-- Descripción y guardar -->
+        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+          <StackPanel Grid.Column="0" Spacing="4">
+            <TextBlock Text="Descripción (opcional, sale en la factura)" />
+            <TextBox Text="{Binding Description}" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="56" MaxLength="300"
+                     PlaceholderText="Detalle adicional del artículo" AutomationProperties.Name="Descripción" />
+            <TextBlock Classes="error" TextWrapping="Wrap" Text="{Binding DescriptionError}" IsVisible="{Binding DescriptionError, Converter={x:Static ObjectConverters.IsNotNull}}" />
+          </StackPanel>
+          <Button Grid.Column="1" Classes="primary" Content="Guardar" Command="{Binding SaveCommand}"
+                  VerticalAlignment="Bottom" IsDefault="True" />
+        </Grid>
+      </StackPanel>
+    </Border>
+
+    <!-- Confirmación de activar/desactivar -->
+    <Border Classes="card" IsVisible="{Binding PendingToggle, Converter={x:Static ObjectConverters.IsNotNull}}">
+      <DockPanel>
+        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8">
+          <Button Content="Cancelar" Command="{Binding CancelToggleCommand}" />
+          <Button Classes="primary" Content="Confirmar" Command="{Binding ConfirmToggleCommand}" />
+        </StackPanel>
+        <TextBlock VerticalAlignment="Center" TextWrapping="Wrap"
+                   Text="{Binding PendingToggle.Sku, StringFormat='¿Cambiar el estado del artículo {0}?'}" />
+      </DockPanel>
+    </Border>
+
+    <!-- Filtros -->
+    <Grid ColumnDefinitions="*,160,200,Auto,Auto" ColumnSpacing="8">
+      <TextBox Grid.Column="0" Text="{Binding Search}" PlaceholderText="Buscar por SKU, nombre o código de barras" AutomationProperties.Name="Buscar artículos" />
+      <ComboBox Grid.Column="1" ItemsSource="{Binding KindFilters}" SelectedItem="{Binding KindFilter}" HorizontalAlignment="Stretch"
+                AutomationProperties.Name="Filtrar por tipo">
+        <ComboBox.ItemTemplate>
+          <DataTemplate x:DataType="vm:KindOption">
+            <TextBlock Text="{Binding Label}" />
+          </DataTemplate>
+        </ComboBox.ItemTemplate>
+      </ComboBox>
+      <ComboBox Grid.Column="2" ItemsSource="{Binding CategoryFilters}" SelectedItem="{Binding CategoryFilter}" HorizontalAlignment="Stretch"
+                IsVisible="{Binding CanReadCategories}" AutomationProperties.Name="Filtrar por categoría">
+        <ComboBox.ItemTemplate>
+          <DataTemplate x:DataType="vm:CategoryOption">
+            <TextBlock Text="{Binding Label}" />
+          </DataTemplate>
+        </ComboBox.ItemTemplate>
+      </ComboBox>
+      <CheckBox Grid.Column="3" Content="Incluir inactivos" IsChecked="{Binding IncludeInactive}" />
+      <Button Grid.Column="4" Content="Buscar" Command="{Binding SearchNowCommand}" />
+    </Grid>
+
+    <!-- Listado -->
+    <Border Classes="card">
+      <StackPanel Spacing="4">
+        <Grid ColumnDefinitions="120,*,90,80,100,90,260">
+          <TextBlock Grid.Column="0" Classes="muted" Text="SKU" />
+          <TextBlock Grid.Column="1" Classes="muted" Text="Nombre · categoría · IVA" />
+          <TextBlock Grid.Column="2" Classes="muted" Text="Tipo" />
+          <TextBlock Grid.Column="3" Classes="muted" Text="Unidad" />
+          <TextBlock Grid.Column="4" Classes="muted" Text="Precio" HorizontalAlignment="Right" />
+          <TextBlock Grid.Column="5" Classes="muted" Text="Estado" Margin="12,0,0,0" />
+        </Grid>
+        <TextBlock Classes="muted" IsVisible="{Binding IsEmpty}" TextWrapping="Wrap"
+                   Text="No hay artículos con estos filtros. Cree el primero con el formulario (necesita al menos una unidad activa)." />
+        <ItemsControl ItemsSource="{Binding Products}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="inv:ProductItem">
+              <Grid ColumnDefinitions="120,*,90,80,100,90,260" Margin="0,4">
+                <TextBlock Grid.Column="0" FontWeight="SemiBold" Text="{Binding Sku}" VerticalAlignment="Center" />
+                <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,8,0">
+                  <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
+                  <TextBlock Classes="muted small" TextTrimming="CharacterEllipsis">
+                    <Run Text="{Binding CategoryLabel}" />
+                    <Run Text=" · " />
+                    <Run Text="{Binding VatLabel}" />
+                  </TextBlock>
+                </StackPanel>
+                <TextBlock Grid.Column="2" Text="{Binding KindLabel}" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="3" Text="{Binding UnitCode}" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="4" Text="{Binding Price, StringFormat='{}{0:C2}'}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="5" Classes="muted" Text="{Binding Status}" VerticalAlignment="Center" Margin="12,0,0,0" />
+                <StackPanel Grid.Column="6" Orientation="Horizontal" Spacing="6"
+                            IsVisible="{Binding $parent[UserControl].((vm:ProductsViewModel)DataContext).CanWrite}">
+                  <Button Content="Editar" CommandParameter="{Binding}"
+                          Command="{Binding $parent[UserControl].((vm:ProductsViewModel)DataContext).EditCommand}" />
+                  <Button Content="Activar / desactivar" CommandParameter="{Binding}"
+                          Command="{Binding $parent[UserControl].((vm:ProductsViewModel)DataContext).AskToggleCommand}" />
+                </StackPanel>
+              </Grid>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </StackPanel>
+    </Border>
+
+    <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+      <Button Content="Anterior" Command="{Binding PreviousPageCommand}" />
+      <TextBlock Classes="muted" VerticalAlignment="Center" Text="{Binding PageLabel}" />
+      <Button Content="Siguiente" Command="{Binding NextPageCommand}" />
+    </StackPanel>
+  </StackPanel>
+</UserControl>

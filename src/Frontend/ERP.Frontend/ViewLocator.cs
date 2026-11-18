@@ -1,5 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Controls.Templates;
+using ERP.Frontend.Modules.Inventory.ViewModels;
+using ERP.Frontend.Modules.Inventory.Views;
 using ERP.Frontend.Modules.Platform.ViewModels;
 using ERP.Frontend.Modules.Platform.Views;
 using ERP.Frontend.Modules.Ui.ViewModels;
@@ -24,6 +26,11 @@ public sealed class ViewLocator : IDataTemplate
         [typeof(BranchesViewModel)] = () => new BranchesView(),
         [typeof(ComponentGalleryViewModel)] = () => new ComponentGalleryView(),
         [typeof(ModulePlaceholderViewModel)] = () => new ModulePlaceholderView(),
+
+        // Inventario (Mendoza)
+        [typeof(UnitsViewModel)] = () => new UnitsView(),
+        [typeof(ProductsViewModel)] = () => new ProductsView(),
+        [typeof(CategoriesViewModel)] = () => new CategoriesView(),
     };
 
     public Control Build(object? param) =>

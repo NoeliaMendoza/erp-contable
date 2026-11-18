@@ -39,7 +39,7 @@ Tres capas independientes; ninguna sustituye a las otras.
 
 ## Pendientes
 
-- OIDC (Identity + OpenIddict, Authorization Code + PKCE, navegador del sistema; tokens en almacén protegido del SO) — PLAT-01.
+- ~~OIDC (Identity + OpenIddict, Authorization Code + PKCE, navegador del sistema)~~ — hecho en PLAT-01 ([guía](modulos/autenticacion.md)); los tokens del escritorio quedan solo en memoria. Pendiente: certificados de producción.
 - Auditoría completa (actor, acción, referencia, cambios) — PLAT-05.
 - Tabla `users` sin RLS (lectura global por el runtime): revisar al integrar Identity.
 - Operaciones globales de plataforma (alta de tenants) requieren un rol/endpoint explícito; hoy solo vía semillas.

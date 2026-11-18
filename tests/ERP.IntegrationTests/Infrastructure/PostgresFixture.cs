@@ -20,6 +20,9 @@ public sealed class PostgresFixture : IAsyncLifetime
 
     public string AppConnectionString { get; private set; } = string.Empty;
 
+    /// <summary>Contraseña aleatoria de los usuarios demo para el inicio de sesión OIDC (solo vive en esta ejecución).</summary>
+    public string DemoPassword { get; } = "Prueba-" + Guid.NewGuid().ToString("N");
+
     public async ValueTask InitializeAsync()
     {
         await _container.StartAsync();
@@ -53,7 +56,7 @@ public sealed class PostgresFixture : IAsyncLifetime
 
         var migrator = new DatabaseMigrator(MigratorConnectionString);
         await migrator.MigrateAsync(CancellationToken.None);
-        await new DevelopmentSeeder(migrator).SeedAsync(CancellationToken.None);
+        await new DevelopmentSeeder(migrator, DemoPassword).SeedAsync(CancellationToken.None);
     }
 
     public async ValueTask DisposeAsync() => await _container.DisposeAsync();

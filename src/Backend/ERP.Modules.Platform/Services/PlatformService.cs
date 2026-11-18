@@ -87,7 +87,7 @@ public sealed class PlatformService(PlatformDbContext db, ITenantContext tenant,
         }
         catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
         {
-            throw new DomainException("branch_code_duplicated", $"Ya existe una sucursal con el código '{branch.Code}'.");
+            throw new ConflictException("branch_code_duplicated", $"Ya existe una sucursal con el código '{branch.Code}'.");
         }
 
         return new BranchResponse(branch.Id, branch.Code, branch.Name, branch.Address, branch.City, branch.IsActive);
