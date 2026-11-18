@@ -9,41 +9,88 @@ using ERP.Frontend.Shell;
 namespace ERP.Frontend.Modules.Platform.ViewModels;
 
 /// <summary>
-/// Inicio de sesión de DESARROLLO: el usuario elige un correo semilla y la API lo autentica con la
-/// cabecera X-Dev-User. Pendiente (PLAT-01): OIDC Authorization Code + PKCE con navegador del sistema.
+/// Inicio de sesión real (PLAT-01): abre el navegador del sistema (OIDC Authorization Code + PKCE) y, al volver,
+/// carga el perfil y las empresas autorizadas. La aplicación nunca ve ni guarda la contraseña.
 /// </summary>
-public sealed partial class LoginViewModel(ErpApiClient api, SessionState session, PageFactory pages, Uri apiBaseUrl) : ViewModelBase
+public sealed partial class LoginViewModel(
+    IAuthenticationService auth, ErpApiClient api, SessionState session, PageFactory pages, Uri apiBaseUrl, string? notice = null)
+    : ViewModelBase
 {
+    private CancellationTokenSource? _signIn;
+
     public string ApiBaseUrl { get; } = apiBaseUrl.ToString();
 
-    public IReadOnlyList<string> DemoUsers { get; } =
-        ["ana.admin@demo.local", "bruno.admin@demo.local", "carla.contadora@demo.local"];
-
+    /// <summary>Aviso informativo (sesión expirada, inicio cancelado). Los errores van en <see cref="ViewModelBase.ErrorMessage"/>.</summary>
     [ObservableProperty]
-    [NotifyCanExecuteChangedFor(nameof(SignInCommand))]
-    public partial string Email { get; set; } = "ana.admin@demo.local";
+    public partial string? Notice { get; set; } = notice;
 
-    private bool CanSignIn() => !string.IsNullOrWhiteSpace(Email) && Email.Contains('@', StringComparison.Ordinal);
+    /// <summary>El navegador está abierto esperando que el usuario ingrese sus credenciales.</summary>
+    [ObservableProperty]
+    public partial bool IsWaitingForBrowser { get; set; }
 
-    [RelayCommand(CanExecute = nameof(CanSignIn))]
-    private Task SignInAsync() => RunAsync(async () =>
+    [RelayCommand]
+    private async Task SignInAsync()
     {
-        session.SignOut();
-        session.SignIn(Email);
-        var profile = await api.GetMyProfileAsync();
-        session.SetProfile(profile.DisplayName);
-
-        if (profile.Memberships.Count == 0)
+        ErrorMessage = null;
+        Notice = null;
+        IsBusy = true;
+        IsWaitingForBrowser = true;
+        using var cts = new CancellationTokenSource();
+        _signIn = cts;
+        try
         {
-            ErrorMessage = "El usuario no pertenece a ninguna empresa activa.";
-            return;
-        }
+            var result = await auth.SignInAsync(cts.Token);
+            IsWaitingForBrowser = false;
+            if (result.Status == SignInStatus.Cancelled)
+            {
+                Notice = result.Message ?? "Inicio de sesión cancelado.";
+                return;
+            }
 
-        pages.Navigator.NavigateTo(pages.TenantSelection(profile));
-    });
+            if (!result.Succeeded)
+            {
+                ErrorMessage = result.Message ?? "No se pudo iniciar sesión.";
+                return;
+            }
+
+            var profile = await api.GetMyProfileAsync(cts.Token);
+            session.SignOut();
+            session.SignIn(profile.Email);
+            session.SetProfile(profile.DisplayName);
+
+            if (profile.Memberships.Count == 0)
+            {
+                ErrorMessage = "El usuario no pertenece a ninguna empresa activa.";
+                await auth.SignOutAsync(CancellationToken.None);
+                return;
+            }
+
+            pages.Navigator.NavigateTo(pages.TenantSelection(profile));
+        }
+        catch (ApiException ex)
+        {
+            ErrorMessage = ex.Message;
+            await auth.SignOutAsync(CancellationToken.None);
+        }
+        catch (OperationCanceledException)
+        {
+            Notice = "Inicio de sesión cancelado.";
+        }
+        finally
+        {
+            _signIn = null;
+            IsWaitingForBrowser = false;
+            IsBusy = false;
+        }
+    }
+
+    /// <summary>Deja de esperar al navegador (el usuario cerró la pestaña o cambió de opinión).</summary>
+    [RelayCommand]
+    private void CancelSignIn() => _signIn?.Cancel();
 }
 
-public sealed partial class TenantSelectionViewModel(ErpApiClient api, SessionState session, PageFactory pages, MyProfile profile) : ViewModelBase
+public sealed partial class TenantSelectionViewModel(
+    IAuthenticationService auth, ErpApiClient api, SessionState session, PageFactory pages, MyProfile profile) : ViewModelBase
 {
     public string Greeting { get; } = $"Hola, {profile.DisplayName}";
 
@@ -55,19 +102,29 @@ public sealed partial class TenantSelectionViewModel(ErpApiClient api, SessionSt
 
     private bool CanEnter() => Selected is not null;
 
+    /// <summary>La API valida membresía y permisos de la empresa elegida (403 si no corresponde); aquí solo se selecciona.</summary>
     [RelayCommand(CanExecute = nameof(CanEnter))]
     private Task EnterAsync() => RunAsync(async () =>
     {
         session.SelectTenant(Selected!.TenantId, Selected.TenantName);
-        var current = await api.GetCurrentTenantAsync();
-        session.SetTenantDetails(current.MyPermissions, current.EnabledFeatures);
-        pages.Navigator.NavigateTo(pages.Shell(current));
+        try
+        {
+            var current = await api.GetCurrentTenantAsync();
+            session.SetTenantDetails(current.MyPermissions, current.EnabledFeatures);
+            pages.Navigator.NavigateTo(pages.Shell(current));
+        }
+        catch (ApiException)
+        {
+            session.ClearTenant();
+            throw;
+        }
     });
 
     [RelayCommand]
-    private void Back()
+    private async Task BackAsync()
     {
         session.SignOut();
+        await auth.SignOutAsync(CancellationToken.None);
         pages.Navigator.NavigateTo(pages.Login());
     }
 }

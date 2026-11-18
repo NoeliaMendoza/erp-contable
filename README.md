@@ -163,7 +163,8 @@ dotnet run --project src/Backend/ERP.DbMigrator -- migrate seed-dev
 
 ## Datos de prueba
 
-Usuarios ficticios (modo desarrollo, sin contraseña):
+Usuarios ficticios. Inician sesión desde el escritorio con la contraseña local `Seed:DemoPassword`
+(la genera `setup-local.ps1`; vea [docs/modulos/autenticacion.md](docs/modulos/autenticacion.md)):
 
 | Usuario | Comercial Andina Demo S.A. | Servicios Pacífico Demo |
 |---|---|---|
@@ -171,7 +172,7 @@ Usuarios ficticios (modo desarrollo, sin contraseña):
 | `bruno.admin@demo.local` | — | Administrador |
 | `carla.contadora@demo.local` | Administrador | Consulta |
 
-Prueba rápida con la API:
+Prueba rápida con la API (la cabecera `X-Dev-User` solo funciona en Development; el escritorio usa OIDC):
 
 ```powershell
 curl.exe -H "X-Dev-User: carla.contadora@demo.local" https://localhost:7180/api/v1/me

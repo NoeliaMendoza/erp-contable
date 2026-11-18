@@ -8,15 +8,15 @@ using ERP.Frontend.Shared.Session;
 namespace ERP.Frontend.Shell;
 
 /// <summary>Crea ViewModels con sus dependencias. Cada módulo agrega aquí sus páginas.</summary>
-public sealed class PageFactory(ErpApiClient api, SessionState session, FrontendSettings settings)
+public sealed class PageFactory(ErpApiClient api, SessionState session, FrontendSettings settings, IAuthenticationService auth)
 {
     public INavigator Navigator { get; set; } = null!;
 
-    public LoginViewModel Login() => new(api, session, this, settings.ApiBaseUrl);
+    public LoginViewModel Login(string? notice = null) => new(auth, api, session, this, settings.ApiBaseUrl, notice);
 
-    public TenantSelectionViewModel TenantSelection(MyProfile profile) => new(api, session, this, profile);
+    public TenantSelectionViewModel TenantSelection(MyProfile profile) => new(auth, api, session, this, profile);
 
-    public ShellViewModel Shell(CurrentTenant tenant) => new(session, this, tenant);
+    public ShellViewModel Shell(CurrentTenant tenant) => new(session, this, tenant, auth, api);
 
     public DashboardViewModel Dashboard() => new(api, session);
 

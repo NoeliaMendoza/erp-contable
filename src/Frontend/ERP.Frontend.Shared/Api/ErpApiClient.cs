@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using ERP.Frontend.Shared.Session;
@@ -107,20 +108,19 @@ public sealed class ErpApiClient(HttpClient http)
     }
 }
 
-/// <summary>Agrega a cada solicitud la identidad de desarrollo y la empresa seleccionada.</summary>
-public sealed class SessionHeadersHandler(SessionState session) : DelegatingHandler
+/// <summary>
+/// Agrega a cada solicitud el token de acceso (<c>Authorization: Bearer</c>) y la empresa seleccionada (<c>X-Tenant-Id</c>).
+/// Si la API responde 401, avisa una sola vez al proveedor de tokens (fin de sesión) y NO reintenta.
+/// Sin <paramref name="tokens"/> (solo pruebas unitarias) no se adjunta token.
+/// </summary>
+public sealed class SessionHeadersHandler(SessionState session, IAccessTokenProvider? tokens = null) : DelegatingHandler
 {
-    public const string DevUserHeader = "X-Dev-User";
     public const string TenantHeader = "X-Tenant-Id";
 
-    protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+    protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
-        // TODO(PLAT-01): sustituir por Authorization: Bearer <token> obtenido con OIDC + PKCE.
-        if (session.UserEmail is { Length: > 0 } email)
-        {
-            request.Headers.Remove(DevUserHeader);
-            request.Headers.Add(DevUserHeader, email);
-        }
+        var accessToken = tokens is null ? null : await tokens.GetAccessTokenAsync(cancellationToken);
+        request.Headers.Authorization = accessToken is null ? null : new AuthenticationHeaderValue("Bearer", accessToken);
 
         request.Headers.Remove(TenantHeader);
         if (session.TenantId is { } tenantId)
@@ -128,6 +128,12 @@ public sealed class SessionHeadersHandler(SessionState session) : DelegatingHand
             request.Headers.Add(TenantHeader, tenantId.ToString());
         }
 
-        return base.SendAsync(request, cancellationToken);
+        var response = await base.SendAsync(request, cancellationToken);
+        if (response.StatusCode == HttpStatusCode.Unauthorized && accessToken is not null)
+        {
+            tokens!.ReportUnauthorized(accessToken);
+        }
+
+        return response;
     }
 }

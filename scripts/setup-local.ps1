@@ -84,6 +84,12 @@ $runtime = "Host=localhost;Port=$port;Database=$db;Username=erp_app;Password=$($
 dotnet user-secrets set 'ConnectionStrings:ErpMigrator' $migrator --project src/Backend/ERP.DbMigrator | Out-Null
 dotnet user-secrets set 'ConnectionStrings:ErpRuntime' $runtime --project src/Backend/ERP.Api | Out-Null
 dotnet user-secrets set 'ConnectionStrings:Redis' "localhost:$redisPort" --project src/Backend/ERP.Api | Out-Null
+# Contraseña de los usuarios demo para el inicio de sesión (OIDC). Aleatoria y solo en su perfil; no se muestra.
+$existing = dotnet user-secrets list --project src/Backend/ERP.DbMigrator 2>$null | Select-String -SimpleMatch 'Seed:DemoPassword'
+if (-not $existing) {
+    dotnet user-secrets set 'Seed:DemoPassword' (New-RandomSecret) --project src/Backend/ERP.DbMigrator | Out-Null
+    Write-Host 'Contraseña de usuarios demo generada. Para verla: dotnet user-secrets list --project src/Backend/ERP.DbMigrator'
+}
 Write-Host 'Listo (se guardan en su perfil de usuario, no en el repositorio).'
 
 if ($SkipDatabase) {

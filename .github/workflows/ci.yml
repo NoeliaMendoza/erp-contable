@@ -53,6 +53,14 @@ jobs:
           --context PlatformDbContext
           --configuration Release --no-build
 
+      - name: Migraciones de autenticación al día con el modelo
+        run: >
+          dotnet ef migrations has-pending-model-changes
+          --project src/Backend/ERP.Modules.Platform
+          --startup-project src/Backend/ERP.DbMigrator
+          --context AuthDbContext
+          --configuration Release --no-build
+
       - name: Pruebas unitarias y de arquitectura
         run: |
           dotnet test --project tests/ERP.UnitTests -c Release --no-build

@@ -52,4 +52,10 @@ internal sealed class UserDirectory(PlatformDbContext db) : IUserDirectory
             .Select(u => (Guid?)u.Id)
             .SingleOrDefaultAsync(cancellationToken);
     }
+
+    public Task<DirectoryUser?> FindActiveUserAsync(Guid userId, CancellationToken cancellationToken) =>
+        db.Users.AsNoTracking()
+            .Where(u => u.Id == userId && u.IsActive)
+            .Select(u => new DirectoryUser(u.Id, u.Email, u.DisplayName))
+            .SingleOrDefaultAsync(cancellationToken);
 }

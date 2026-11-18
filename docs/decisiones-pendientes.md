@@ -6,7 +6,7 @@ Supuestos actuales son **explícitos y reversibles**. Cerrar cada decisión con 
 |---|---|---|---|---|
 | D-01 | ¿Un tenant = un RUC, o un tenant administra varios RUC? | El esquema permite N contribuyentes por tenant; la UI y semillas usan 1 | Claves, RLS por contribuyente, reportes | Producto + Int. 1 |
 | D-02 | Modelo sucursal ↔ establecimiento ↔ punto de emisión | Separados; establecimiento puede ligarse a una sucursal | Numeración, permisos por sucursal | Int. 1 + Int. 3 |
-| D-03 | Autenticación definitiva | Esquema de desarrollo `X-Dev-User` solo en Development/Testing | Bloquea despliegue real | Int. 1 (PLAT-01) |
+| D-03 | Autenticación definitiva | **Resuelta en PLAT-01** ([ADR-0004](adr/0004-oidc-identity-openiddict.md)): OIDC con Identity + OpenIddict. Pendiente: certificados de producción y persistencia opcional de la sesión | Despliegue requiere certificados `.pfx` | Int. 1 (PLAT-01) |
 | D-04 | Integración de ASP.NET Core Identity con `platform.users` | Tabla propia mínima | Migración de identidad | Int. 1 |
 | D-05 | Precisión, escala y redondeo monetario; moneda extranjera | USD, 2 decimales en asientos; sin moneda extranjera | Esquema contable | Int. 2 + contador |
 | D-06 | Política de inventario (FIFO/promedio), stock negativo, reservas | No definida | Contratos de Inventory | Int. 5 |
