@@ -1,6 +1,6 @@
 # Autenticación real (PLAT-01)
 
-Responsable: Reyes · Revisan: Andy (cliente HTTP) e integrador.
+Responsable: Reyes · Revisa: Noelia Mendoza.
 Inicio de sesión con **ASP.NET Core Identity + OpenIddict**, flujo **Authorization Code + PKCE** y **navegador del sistema**.
 Sustituye a la cabecera de desarrollo `X-Dev-User` en el escritorio ([ADR-0004](../adr/0004-oidc-identity-openiddict.md)).
 
