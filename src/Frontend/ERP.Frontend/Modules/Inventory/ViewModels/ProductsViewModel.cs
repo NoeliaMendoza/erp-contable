@@ -80,10 +80,14 @@ public sealed partial class ProductsViewModel : ViewModelBase
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(PageLabel))]
+    [NotifyPropertyChangedFor(nameof(CanGoPrevious))]
+    [NotifyPropertyChangedFor(nameof(CanGoNext))]
     public partial int Page { get; set; } = 1;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(PageLabel))]
+    [NotifyPropertyChangedFor(nameof(CanGoPrevious))]
+    [NotifyPropertyChangedFor(nameof(CanGoNext))]
     public partial int TotalPages { get; set; } = 1;
 
     [ObservableProperty]
@@ -91,6 +95,10 @@ public sealed partial class ProductsViewModel : ViewModelBase
     public partial int TotalCount { get; set; }
 
     public string PageLabel => $"Página {Page} de {Math.Max(TotalPages, 1)}";
+
+    public bool CanGoPrevious => Page > 1;
+
+    public bool CanGoNext => Page < Math.Max(TotalPages, 1);
 
     public bool IsEmpty => TotalCount == 0 && !IsBusy;
 
@@ -245,20 +253,28 @@ public sealed partial class ProductsViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private Task LoadAsync() => RunAsync(async () =>
+    private Task LoadAsync()
     {
-        var result = await _api.ListProductsAsync(
-            Page, PageSize, Search, KindFilter?.Value, IncludeInactive ? null : true, CategoryFilter?.Id);
-        Products.Clear();
-        foreach (var product in result.Items)
+        if (IsBusy)
         {
-            Products.Add(product);
+            return Task.CompletedTask;
         }
 
-        TotalCount = result.TotalCount;
-        TotalPages = result.TotalPages;
-        OnPropertyChanged(nameof(IsEmpty));
-    });
+        return RunAsync(async () =>
+        {
+            var result = await _api.ListProductsAsync(
+                Page, PageSize, Search, KindFilter?.Value, IncludeInactive ? null : true, CategoryFilter?.Id);
+            Products.Clear();
+            foreach (var product in result.Items)
+            {
+                Products.Add(product);
+            }
+
+            TotalCount = result.TotalCount;
+            TotalPages = result.TotalPages;
+            OnPropertyChanged(nameof(IsEmpty));
+        });
+    }
 
     [RelayCommand]
     private Task SearchNowAsync()
@@ -266,6 +282,9 @@ public sealed partial class ProductsViewModel : ViewModelBase
         Page = 1;
         return LoadAsync();
     }
+
+    [RelayCommand]
+    private void ClearSearch() => Search = null;
 
     [RelayCommand]
     private Task NextPageAsync()
@@ -336,6 +355,11 @@ public sealed partial class ProductsViewModel : ViewModelBase
     [RelayCommand]
     private async Task SaveAsync()
     {
+        if (IsBusy)
+        {
+            return;
+        }
+
         ClearMessages();
         if (!TryBuildRequest(out var request))
         {
@@ -449,7 +473,7 @@ public sealed partial class ProductsViewModel : ViewModelBase
     [RelayCommand]
     private async Task ConfirmToggleAsync()
     {
-        if (PendingToggle is not { } product)
+        if (IsBusy || PendingToggle is not { } product)
         {
             return;
         }
