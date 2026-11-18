@@ -8,6 +8,25 @@ Cambiar un contrato = PR revisado por productor **y** consumidores.
 - Permisos: cada módulo publica `IPermissionProvider` y constantes `XPermissions`. Códigos `modulo.recurso.accion`.
 - Feature codes: `platform`, `accounting`, `sales`, `purchases`, `inventory`, `reporting`.
 
+## Sesión del escritorio (Platform → Frontend, PLAT-01 · Reyes)
+
+Interfaces en `ERP.Frontend.Shared/Session/AuthenticationContracts.cs`. Las pantallas y el cliente HTTP dependen
+**solo** de ellas; nadie usa OpenIddict ni guarda tokens por su cuenta.
+
+| Tipo | Uso |
+|---|---|
+| `IAuthenticationService` | `SignInAsync(ct)` abre el navegador del sistema (Authorization Code + PKCE) y devuelve `SignInResult` (`Succeeded` / `Cancelled` / `Failed` + mensaje para el usuario). `SignOutAsync(ct)` cierra la sesión local. Evento `SessionEnded` (`SignedOut` / `Expired`). |
+| `IAccessTokenProvider` | Lo consume `SessionHeadersHandler`: `GetAccessTokenAsync(ct)` devuelve el token vigente (lo renueva una vez si está por expirar) o `null`; `ReportUnauthorized(token)` cuando la API responde 401 → fin de sesión, **sin reintentos**. |
+| `SessionState` | Se mantiene: perfil (`/api/v1/me`), empresa seleccionada, permisos y módulos habilitados (solo UX). |
+
+Reglas:
+- La API autentica con `Authorization: Bearer <token>`; `X-Tenant-Id` es solo la **selección** de empresa y el servidor
+  valida membresía y permiso en cada solicitud (sin membresía → 403).
+- Tokens solo en memoria; nunca en registros, archivos, capturas ni Git.
+- `X-Dev-User` queda solo para Development/Testing (pruebas y `curl`); el escritorio deja de enviarlo.
+- Un módulo nuevo **no** necesita tocar nada de esto: usa `ErpApiClient.GetAsync<T>` / `SendJsonAsync<T>`, que ya
+  adjuntan token y empresa.
+
 ## Accounting.Contracts — `IAccountingPostingService` (implementación pendiente, Integrante 2)
 - `PostAsync(PostingRequest)`: idempotente por `IdempotencyKey` (`"<modulo>:<tipo>:<id>"`), valida partida doble, período abierto y cuentas del tenant; devuelve el asiento existente si la clave ya se procesó.
 - `ReverseAsync(...)`: reverso auditable; nunca se borra un asiento contabilizado.
