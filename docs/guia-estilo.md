@@ -88,7 +88,6 @@ Dependencias entre módulos solo vía `*.Contracts` 🔒 (`DependencyRulesTests`
 | Texto / texto secundario | `ErpTextBrush` / `ErpMutedTextBrush` | `#1B1F23` / `#6B7280` |
 | Indicadores (pasteles) | `ErpKpiLavenderBrush`, `ErpKpiSkyBrush`, `ErpKpiMintBrush` | `#C9B8F5`, `#A9C8FA`, `#9EE3B8` |
 | Éxito / advertencia / error | `ErpSuccessBrush`, `ErpWarningBrush`, `ErpErrorBrush` | `#2E9E6B`, `#E0A12B`, `#D64545` |
-| Superficies de feedback | `ErpSuccessSurfaceBrush`, `ErpSuccessBorderBrush`, `ErpErrorSurfaceBrush`, `ErpErrorBorderBrush` | `#EEF9F3`, `#B8E0C8`, `#FDECEC`, `#F3B4B4` |
 
 - El lima **nunca** se usa como color de texto: sobre blanco no se lee. Solo como fondo con `ErpOnAccentBrush` encima.
 - Sobre un pastel, el texto usa su tono oscuro (`ErpOnKpi*Brush`), no negro.
@@ -99,50 +98,6 @@ Dependencias entre módulos solo vía `*.Contracts` 🔒 (`DependencyRulesTests`
 - Textos en español, con tildes; botones con verbo: "Crear", "Guardar", "Cancelar".
 - Toda acción debe poder hacerse con teclado; `AutomationProperties.Name` en campos sin etiqueta.
 - Un componente que se repite en dos módulos se mueve a `ERP.Frontend.Shared` (lo coordina el Integrante 6).
-
-### Componentes visuales compartidos
-
-Los controles de `ERP.Frontend.Shared/Controls` concentran patrones repetidos para que cada módulo conserve la misma experiencia:
-
-- `FormField` para etiqueta, ayuda, contenido y error de campo.
-- `FeedbackBar` para carga, error recuperable y confirmación.
-- `SearchBox` para búsquedas y limpieza del texto.
-- `PaginationBar` para paginación controlada por el ViewModel.
-- `EmptyState` para listas sin registros.
-- `ConfirmationDialog` para acciones que requieren confirmación.
-
-La galería identificada está en `src/Frontend/ERP.Frontend/Modules/Ui/Views/ComponentGalleryView.axaml`. Es una muestra local de componentes; no sustituye pruebas de persistencia ni autorización. Las pantallas `UnitsView`, `CategoriesView` y `ProductsView` demuestran la conexión de los controles a un CRUD real de Inventario.
-
-#### Uso en un CRUD
-
-Todos los controles se importan desde `ERP.Frontend.Shared.Controls` y reciben sus datos mediante bindings al ViewModel. El ViewModel debe exponer `IsBusy`, `ErrorMessage`, `SuccessMessage`, `IsEmpty`, las propiedades de paginación y los comandos correspondientes.
-
-- `FormField`: coloca el control dentro de `FieldContent`; `Label`, `Hint` y `ErrorMessage` son comunes para todos los campos.
-
-  ```xml
-  <controls:FormField Label="Nombre" ErrorMessage="{Binding NameError}">
-    <controls:FormField.FieldContent>
-      <TextBox Text="{Binding Name}" AutomationProperties.Name="Nombre" />
-    </controls:FormField.FieldContent>
-  </controls:FormField>
-  ```
-
-- `FeedbackBar`: enlaza `IsBusy`, `ErrorMessage` y `SuccessMessage`; `RetryCommand` debe volver a cargar los datos.
-- `SearchBox`: enlaza `SearchText` en dos vías y proporciona un `ClearSearchCommand` para limpiar el filtro.
-- `PaginationBar`: enlaza `CurrentPage`, `TotalPages`, `CanGoPrevious`, `CanGoNext`, `PreviousCommand` y `NextCommand`.
-- `EmptyState`: muestra el estado vacío con `IsVisible`, `Title` y `Message`; solo agrega `ActionCommand` si la pantalla permite crear registros.
-- `ConfirmationDialog`: muestra la confirmación con `IsVisible`, `Message`, `ConfirmCommand`, `CancelCommand`, `IsBusy` y `ErrorMessage`. El comando de confirmación debe protegerse contra doble envío.
-
-#### Registro de una pantalla
-
-Para que una pantalla de módulo sea navegable, se registra en cuatro puntos:
-
-1. Crear `<Nombre>View.axaml` y `<Nombre>ViewModel.cs` con `x:DataType`.
-2. Agregar el factory del ViewModel en `src/Frontend/ERP.Frontend/Shell/PageFactory.cs`.
-3. Mapear el ViewModel a su vista en `src/Frontend/ERP.Frontend/ViewLocator.cs`.
-4. Agregar la entrada de menú condicionada por permiso en `src/Frontend/ERP.Frontend/Shell/ShellViewModel.cs`.
-
-La pantalla se documenta también en `docs/modulos/<modulo>.md`, indicando su permiso, endpoint, estados de carga/vacío/error y la prueba que la cubre. Inventario sirve como referencia completa.
 
 ## 8. Git
 

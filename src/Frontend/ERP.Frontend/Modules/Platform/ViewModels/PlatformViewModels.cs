@@ -133,12 +133,10 @@ public sealed partial class TenantSelectionViewModel(
 public sealed partial class DashboardViewModel : ViewModelBase
 {
     private readonly ErpApiClient _api;
-    private readonly PageFactory _pages;
 
-    public DashboardViewModel(ErpApiClient api, SessionState session, PageFactory pages)
+    public DashboardViewModel(ErpApiClient api, SessionState session)
     {
         _api = api;
-        _pages = pages;
         TenantName = session.TenantName ?? string.Empty;
         _ = LoadCommand.ExecuteAsync(null);
     }
@@ -149,9 +147,6 @@ public sealed partial class DashboardViewModel : ViewModelBase
 
     [ObservableProperty]
     public partial int BranchCount { get; set; }
-
-    [RelayCommand]
-    private void OpenUiGallery() => _pages.Navigator.NavigateTo(_pages.UiGallery());
 
     [RelayCommand]
     private Task LoadAsync() => RunAsync(async () =>
@@ -194,98 +189,28 @@ public sealed partial class BranchesViewModel : ViewModelBase
     public partial string? NewCity { get; set; }
 
     [ObservableProperty]
-    public partial string? NewCodeError { get; set; }
-
-    [ObservableProperty]
-    public partial string? NewNameError { get; set; }
-
-    [ObservableProperty]
-    public partial bool HasBranches { get; set; }
-
-    [ObservableProperty]
-    public partial bool IsEmpty { get; set; }
-
-    [ObservableProperty]
     public partial string? SuccessMessage { get; set; }
 
     [RelayCommand]
-    private async Task LoadAsync()
+    private Task LoadAsync() => RunAsync(async () =>
     {
-        if (IsBusy)
+        var branches = await _api.GetBranchesAsync();
+        Branches.Clear();
+        foreach (var branch in branches)
         {
-            return;
+            Branches.Add(branch);
         }
-
-        IsEmpty = false;
-        SuccessMessage = null;
-        await RunAsync(async () =>
-        {
-            var branches = await _api.GetBranchesAsync();
-            Branches.Clear();
-            foreach (var branch in branches)
-            {
-                Branches.Add(branch);
-            }
-
-            HasBranches = Branches.Count > 0;
-            IsEmpty = !HasBranches;
-        });
-
-        if (ErrorMessage is not null)
-        {
-            IsEmpty = false;
-        }
-    }
+    });
 
     [RelayCommand]
-    private async Task CreateAsync()
+    private Task CreateAsync() => RunAsync(async () =>
     {
-        if (IsBusy)
-        {
-            return;
-        }
-
         SuccessMessage = null;
-        ErrorMessage = null;
-        if (!ValidateForm())
-        {
-            return;
-        }
-
-        await RunAsync(async () =>
-        {
-            var created = await _api.CreateBranchAsync(new CreateBranch(NewCode.Trim(), NewName.Trim(), null, NewCity?.Trim()));
-            Branches.Add(created);
-            SuccessMessage = $"Sucursal {created.Code} creada.";
-            NewCode = string.Empty;
-            NewName = string.Empty;
-            NewCity = null;
-            HasBranches = true;
-            IsEmpty = false;
-        });
-    }
-
-    partial void OnNewCodeChanged(string value)
-    {
-        if (!string.IsNullOrWhiteSpace(value))
-        {
-            NewCodeError = null;
-        }
-    }
-
-    partial void OnNewNameChanged(string value)
-    {
-        if (!string.IsNullOrWhiteSpace(value))
-        {
-            NewNameError = null;
-        }
-    }
-
-    private bool ValidateForm()
-    {
-        NewCodeError = string.IsNullOrWhiteSpace(NewCode) ? "Escriba el código de la sucursal." : null;
-        NewNameError = string.IsNullOrWhiteSpace(NewName) ? "Escriba el nombre de la sucursal." : null;
-        return NewCodeError is null && NewNameError is null;
-    }
-
+        var created = await _api.CreateBranchAsync(new CreateBranch(NewCode, NewName, null, NewCity));
+        Branches.Add(created);
+        SuccessMessage = $"Sucursal {created.Code} creada.";
+        NewCode = string.Empty;
+        NewName = string.Empty;
+        NewCity = null;
+    });
 }

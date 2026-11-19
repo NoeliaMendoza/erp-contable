@@ -1,7 +1,6 @@
 using ERP.Frontend.Modules.Inventory;
 using ERP.Frontend.Modules.Inventory.ViewModels;
 using ERP.Frontend.Modules.Platform.ViewModels;
-using ERP.Frontend.Modules.Ui.ViewModels;
 using ERP.Frontend.Shared.Api;
 using ERP.Frontend.Shared.Mvvm;
 using ERP.Frontend.Shared.Session;
@@ -19,9 +18,7 @@ public sealed class PageFactory(ErpApiClient api, SessionState session, Frontend
 
     public ShellViewModel Shell(CurrentTenant tenant) => new(session, this, tenant, auth, api);
 
-    public DashboardViewModel Dashboard() => new(api, session, this);
-
-    public ComponentGalleryViewModel UiGallery() => new();
+    public DashboardViewModel Dashboard() => new(api, session);
 
     public BranchesViewModel Branches() => new(api, session);
 

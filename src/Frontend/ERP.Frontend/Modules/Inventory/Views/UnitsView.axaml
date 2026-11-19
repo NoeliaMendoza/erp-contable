@@ -2,7 +2,6 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:ERP.Frontend.Modules.Inventory.ViewModels"
              xmlns:inv="using:ERP.Frontend.Modules.Inventory"
-             xmlns:controls="using:ERP.Frontend.Shared.Controls"
              x:Class="ERP.Frontend.Modules.Inventory.Views.UnitsView"
              x:DataType="vm:UnitsViewModel">
   <StackPanel Spacing="16">
@@ -11,31 +10,30 @@
       <TextBlock Classes="h1" Text="Unidades de medida" />
     </DockPanel>
 
-    <controls:FeedbackBar IsBusy="{Binding IsBusy}"
-                          ErrorMessage="{Binding ErrorMessage}"
-                          SuccessMessage="{Binding SuccessMessage}"
-                          RetryCommand="{Binding LoadCommand}" />
+    <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsBusy}" />
+    <TextBlock Classes="error" Text="{Binding ErrorMessage}" IsVisible="{Binding ErrorMessage, Converter={x:Static ObjectConverters.IsNotNull}}" />
+    <TextBlock Classes="muted" Text="{Binding SuccessMessage}" IsVisible="{Binding SuccessMessage, Converter={x:Static ObjectConverters.IsNotNull}}" />
 
     <!-- Formulario -->
     <Border Classes="card" IsVisible="{Binding CanWrite}">
       <StackPanel Spacing="8">
         <DockPanel>
-          <Button DockPanel.Dock="Right" Content="Cancelar" Command="{Binding NewUnitCommand}" />
+          <Button DockPanel.Dock="Right" Content="Limpiar" Command="{Binding NewUnitCommand}" />
           <TextBlock Classes="h2" Text="{Binding FormTitle}" />
         </DockPanel>
-        <Grid ColumnDefinitions="*,*,Auto" ColumnSpacing="8">
-          <controls:FormField Grid.Column="0" Label="Código" ErrorMessage="{Binding CodeError}">
-            <controls:FormField.FieldContent>
-              <TextBox Text="{Binding Code}" PlaceholderText="UND" AutomationProperties.Name="Código de unidad" />
-            </controls:FormField.FieldContent>
-          </controls:FormField>
-          <controls:FormField Grid.Column="1" Label="Nombre" ErrorMessage="{Binding NameError}">
-            <controls:FormField.FieldContent>
-              <TextBox Text="{Binding Name}" PlaceholderText="Unidad" AutomationProperties.Name="Nombre de unidad" />
-            </controls:FormField.FieldContent>
-          </controls:FormField>
+        <Grid ColumnDefinitions="160,*,Auto" ColumnSpacing="8">
+          <StackPanel Grid.Column="0" Spacing="4">
+            <TextBlock Text="Código" />
+            <TextBox Text="{Binding Code}" PlaceholderText="UND" AutomationProperties.Name="Código de unidad" />
+            <TextBlock Classes="error" Text="{Binding CodeError}" IsVisible="{Binding CodeError, Converter={x:Static ObjectConverters.IsNotNull}}" />
+          </StackPanel>
+          <StackPanel Grid.Column="1" Spacing="4">
+            <TextBlock Text="Nombre" />
+            <TextBox Text="{Binding Name}" PlaceholderText="Unidad" AutomationProperties.Name="Nombre de unidad" />
+            <TextBlock Classes="error" Text="{Binding NameError}" IsVisible="{Binding NameError, Converter={x:Static ObjectConverters.IsNotNull}}" />
+          </StackPanel>
           <Button Grid.Column="2" Classes="primary" Content="Guardar" Command="{Binding SaveCommand}"
-                  VerticalAlignment="Bottom" IsDefault="True" />
+                  VerticalAlignment="Top" Margin="0,22,0,0" IsDefault="True" />
         </Grid>
         <TextBlock Classes="muted small" TextWrapping="Wrap"
                    Text="El código se guarda en mayúsculas y debe ser único en la empresa." />
@@ -43,19 +41,20 @@
     </Border>
 
     <!-- Confirmación de activar/desactivar -->
-    <controls:ConfirmationDialog IsVisible="{Binding PendingToggle, Converter={x:Static ObjectConverters.IsNotNull}}"
-                                 Title="Cambiar estado"
-                                 Message="{Binding PendingToggle.Code, StringFormat='¿Cambiar el estado de la unidad {0}?'}"
-                                 IsBusy="{Binding IsBusy}"
-                                 ErrorMessage="{Binding ErrorMessage}"
-                                 ConfirmCommand="{Binding ConfirmToggleCommand}"
-                                 CancelCommand="{Binding CancelToggleCommand}" />
+    <Border Classes="card" IsVisible="{Binding PendingToggle, Converter={x:Static ObjectConverters.IsNotNull}}">
+      <DockPanel>
+        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8">
+          <Button Content="Cancelar" Command="{Binding CancelToggleCommand}" />
+          <Button Classes="primary" Content="Confirmar" Command="{Binding ConfirmToggleCommand}" />
+        </StackPanel>
+        <TextBlock VerticalAlignment="Center" TextWrapping="Wrap"
+                   Text="{Binding PendingToggle.Code, StringFormat='¿Cambiar el estado de la unidad {0}?'}" />
+      </DockPanel>
+    </Border>
 
     <!-- Búsqueda -->
     <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
-      <controls:SearchBox Grid.Column="0" SearchText="{Binding Search, Mode=TwoWay}"
-                          PlaceholderText="Buscar por código o nombre"
-                          ClearCommand="{Binding ClearSearchCommand}" />
+      <TextBox Grid.Column="0" Text="{Binding Search}" PlaceholderText="Buscar por código o nombre" AutomationProperties.Name="Buscar unidades" />
       <CheckBox Grid.Column="1" Content="Incluir inactivas" IsChecked="{Binding IncludeInactive}" />
       <Button Grid.Column="2" Content="Buscar" Command="{Binding SearchNowCommand}" />
     </Grid>
@@ -63,18 +62,17 @@
     <!-- Listado -->
     <Border Classes="card">
       <StackPanel Spacing="4">
-        <Grid ColumnDefinitions="*,2*,*,2*">
+        <Grid ColumnDefinitions="120,*,100,260">
           <TextBlock Grid.Column="0" Classes="muted" Text="Código" />
           <TextBlock Grid.Column="1" Classes="muted" Text="Nombre" />
           <TextBlock Grid.Column="2" Classes="muted" Text="Estado" />
         </Grid>
-        <controls:EmptyState IsVisible="{Binding IsEmpty}"
-                             Title="No hay unidades"
-                             Message="Todavía no hay unidades. Cree la primera con el formulario, por ejemplo UND (unidad) o HORA." />
+        <TextBlock Classes="muted" IsVisible="{Binding IsEmpty}" TextWrapping="Wrap"
+                   Text="Todavía no hay unidades. Cree la primera con el formulario, por ejemplo UND (unidad) o HORA." />
         <ItemsControl ItemsSource="{Binding Units}">
           <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="inv:UnitItem">
-              <Grid ColumnDefinitions="*,2*,*,2*" Margin="0,4">
+              <Grid ColumnDefinitions="120,*,100,260" Margin="0,4">
                 <TextBlock Grid.Column="0" FontWeight="SemiBold" Text="{Binding Code}" VerticalAlignment="Center" />
                 <TextBlock Grid.Column="1" Text="{Binding Name}" VerticalAlignment="Center" />
                 <TextBlock Grid.Column="2" Classes="muted" Text="{Binding Status}" VerticalAlignment="Center" />
@@ -93,11 +91,10 @@
     </Border>
 
     <!-- Paginación -->
-    <controls:PaginationBar CurrentPage="{Binding Page}"
-                            TotalPages="{Binding TotalPages}"
-                            CanGoPrevious="{Binding CanGoPrevious}"
-                            CanGoNext="{Binding CanGoNext}"
-                            PreviousCommand="{Binding PreviousPageCommand}"
-                            NextCommand="{Binding NextPageCommand}" />
+    <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+      <Button Content="Anterior" Command="{Binding PreviousPageCommand}" />
+      <TextBlock Classes="muted" VerticalAlignment="Center" Text="{Binding PageLabel}" />
+      <Button Content="Siguiente" Command="{Binding NextPageCommand}" />
+    </StackPanel>
   </StackPanel>
 </UserControl>

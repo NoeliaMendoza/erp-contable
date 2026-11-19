@@ -2,20 +2,15 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:ERP.Frontend.Modules.Platform.ViewModels"
              xmlns:api="using:ERP.Frontend.Shared.Api"
-             xmlns:controls="using:ERP.Frontend.Shared.Controls"
              x:Class="ERP.Frontend.Modules.Platform.Views.DashboardView"
              x:DataType="vm:DashboardViewModel">
   <StackPanel Spacing="16">
     <DockPanel>
-      <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8">
-        <Button Classes="secondary" Content="Guía visual" Command="{Binding OpenUiGalleryCommand}" />
-        <Button Content="Actualizar" Command="{Binding LoadCommand}" />
-      </StackPanel>
+      <Button DockPanel.Dock="Right" Content="Actualizar" Command="{Binding LoadCommand}" />
       <TextBlock Classes="h1" Text="{Binding TenantName}" />
     </DockPanel>
-    <controls:FeedbackBar IsBusy="{Binding IsBusy}"
-                          ErrorMessage="{Binding ErrorMessage}"
-                          RetryCommand="{Binding LoadCommand}" />
+    <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsBusy}" />
+    <TextBlock Classes="error" Text="{Binding ErrorMessage}" IsVisible="{Binding ErrorMessage, Converter={x:Static ObjectConverters.IsNotNull}}" />
 
     <Border Classes="kpi-mint" HorizontalAlignment="Left" MinWidth="220">
       <StackPanel Spacing="4">
