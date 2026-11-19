@@ -53,6 +53,11 @@ public sealed partial class ShellViewModel : ViewModelBase
             }
         }
 
+        if (session.EnabledFeatures.Contains("reporting") && session.Can("reporting.dashboard.read"))
+        {
+            MenuItems.Add(new MenuEntry("Reportes", pages.ReportingDashboard));
+        }
+
         foreach (var module in FrontendModules.Pending.Where(m => session.EnabledFeatures.Contains(m.FeatureCode)))
         {
             MenuItems.Add(new MenuEntry(module.Title, () => pages.Placeholder(module)));

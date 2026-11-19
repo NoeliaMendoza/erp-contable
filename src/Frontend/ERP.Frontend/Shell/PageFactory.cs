@@ -1,6 +1,7 @@
 using ERP.Frontend.Modules.Inventory;
 using ERP.Frontend.Modules.Inventory.ViewModels;
 using ERP.Frontend.Modules.Platform.ViewModels;
+using ERP.Frontend.Modules.Reporting.ViewModels;
 using ERP.Frontend.Modules.Ui.ViewModels;
 using ERP.Frontend.Shared.Api;
 using ERP.Frontend.Shared.Mvvm;
@@ -22,6 +23,8 @@ public sealed class PageFactory(ErpApiClient api, SessionState session, Frontend
     public DashboardViewModel Dashboard() => new(api, session, this);
 
     public ComponentGalleryViewModel UiGallery() => new();
+
+    public ReportingDashboardViewModel ReportingDashboard() => new();
 
     public BranchesViewModel Branches() => new(api, session);
 
@@ -45,6 +48,5 @@ public static class FrontendModules
         new("accounting", "Contabilidad", "Integrante 2", "Plan de cuentas, períodos, asientos, libro diario y mayor."),
         new("sales", "Ventas", "Integrante 3", "Clientes, documentos de venta, cuentas por cobrar y comprobantes SRI."),
         new("purchases", "Compras y tesorería", "Integrante 4", "Proveedores, compras, pagos, cobros, caja y bancos."),
-        new("reporting", "Reportes", "Integrante 6", "Dashboard, reportes PDF/Excel y conciliaciones internas."),
     ];
 }

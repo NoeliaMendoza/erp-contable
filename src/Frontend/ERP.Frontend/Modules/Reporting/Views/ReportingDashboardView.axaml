@@ -1,0 +1,113 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:ERP.Frontend.Modules.Reporting.ViewModels"
+             xmlns:controls="using:ERP.Frontend.Shared.Controls"
+             x:Class="ERP.Frontend.Modules.Reporting.Views.ReportingDashboardView"
+             x:DataType="vm:ReportingDashboardViewModel">
+  <ScrollViewer>
+    <StackPanel Spacing="{StaticResource ErpSpacingLarge}">
+      <DockPanel>
+        <StackPanel>
+          <TextBlock Classes="h1" Text="Resumen y reportes" />
+          <TextBlock Classes="muted" Text="Indicadores de la empresa activa y consultas operativas." />
+        </StackPanel>
+        <Button DockPanel.Dock="Right"
+                Classes="secondary"
+                Content="Actualizar"
+                Command="{Binding ApplyFiltersCommand}"
+                AutomationProperties.Name="Actualizar reportes" />
+      </DockPanel>
+
+      <controls:FeedbackBar IsBusy="{Binding IsBusy}"
+                            ErrorMessage="{Binding ErrorMessage}"
+                            SuccessMessage="{Binding SuccessMessage}" />
+
+      <Border Classes="card">
+        <StackPanel Spacing="{StaticResource ErpSpacingMedium}">
+          <TextBlock Classes="h2" Text="Periodo de consulta" />
+          <Grid ColumnDefinitions="*,*,Auto" ColumnSpacing="{StaticResource ErpSpacingLarge}">
+            <controls:FormField Grid.Column="0" Label="Desde">
+              <controls:FormField.FieldContent>
+                <DatePicker SelectedDate="{Binding FromDate}"
+                            AutomationProperties.Name="Fecha inicial" />
+              </controls:FormField.FieldContent>
+            </controls:FormField>
+            <controls:FormField Grid.Column="1" Label="Hasta">
+              <controls:FormField.FieldContent>
+                <DatePicker SelectedDate="{Binding ToDate}"
+                            AutomationProperties.Name="Fecha final" />
+              </controls:FormField.FieldContent>
+            </controls:FormField>
+            <StackPanel Grid.Column="2"
+                        Orientation="Horizontal"
+                        Spacing="{StaticResource ErpSpacingSmall}"
+                        VerticalAlignment="Bottom">
+              <Button Classes="primary"
+                      Content="Aplicar"
+                      Command="{Binding ApplyFiltersCommand}"
+                      AutomationProperties.Name="Aplicar periodo" />
+              <Button Classes="secondary"
+                      Content="Limpiar"
+                      Command="{Binding ClearFiltersCommand}"
+                      AutomationProperties.Name="Limpiar periodo" />
+            </StackPanel>
+          </Grid>
+          <TextBlock Classes="muted small"
+                     Text="{Binding SelectedRangeLabel, StringFormat='Periodo seleccionado: {0}'}" />
+        </StackPanel>
+      </Border>
+
+      <Grid ColumnDefinitions="*,*,*" ColumnSpacing="{StaticResource ErpSpacingLarge}">
+        <Border Grid.Column="0" Classes="kpi-sky">
+          <StackPanel Spacing="4">
+            <TextBlock Text="Ventas del día" />
+            <TextBlock Classes="kpi" Text="{Binding SalesTodayLabel}" />
+            <TextBlock Classes="muted" Text="Consulta del servidor" />
+          </StackPanel>
+        </Border>
+        <Border Grid.Column="1" Classes="kpi-lavender">
+          <StackPanel Spacing="4">
+            <TextBlock Text="Ventas del mes" />
+            <TextBlock Classes="kpi" Text="{Binding SalesMonthLabel}" />
+            <TextBlock Classes="muted" Text="Consulta del servidor" />
+          </StackPanel>
+        </Border>
+        <Border Grid.Column="2" Classes="kpi-mint">
+          <StackPanel Spacing="4">
+            <TextBlock Text="Stock bajo" />
+            <TextBlock Classes="kpi" Text="{Binding LowStockLabel}" />
+            <TextBlock Classes="muted" Text="Consulta del servidor" />
+          </StackPanel>
+        </Border>
+      </Grid>
+
+      <Grid ColumnDefinitions="*,*" ColumnSpacing="{StaticResource ErpSpacingLarge}">
+        <Border Grid.Column="0" Classes="card">
+          <StackPanel Spacing="{StaticResource ErpSpacingMedium}">
+            <TextBlock Classes="h2" Text="Ventas por fecha" />
+            <TextBlock Classes="muted" Text="El resultado respetará el periodo seleccionado." />
+            <controls:EmptyState Title="Sin datos de ventas"
+                                 Message="El reporte se mostrará cuando Ventas publique su consulta para Reporting." />
+          </StackPanel>
+        </Border>
+        <Border Grid.Column="1" Classes="card">
+          <StackPanel Spacing="{StaticResource ErpSpacingMedium}">
+            <TextBlock Classes="h2" Text="Existencias" />
+            <TextBlock Classes="muted" Text="Productos que requieren atención por stock mínimo." />
+            <controls:EmptyState Title="Sin datos de existencias"
+                                 Message="El reporte se mostrará cuando Inventario publique su consulta de stock." />
+          </StackPanel>
+        </Border>
+      </Grid>
+
+      <Border Classes="card">
+        <StackPanel Spacing="{StaticResource ErpSpacingSmall}">
+          <TextBlock Classes="h2" Text="Diseño inicial de REP-01" />
+          <TextBlock Classes="muted"
+                     TextWrapping="Wrap"
+                     Text="Esta pantalla ya define la experiencia visual. Los indicadores y listados no usan datos simulados: se conectarán a consultas del servidor mediante los contratos de Ventas e Inventario." />
+        </StackPanel>
+      </Border>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

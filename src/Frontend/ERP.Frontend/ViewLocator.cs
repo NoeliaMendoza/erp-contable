@@ -4,6 +4,8 @@ using ERP.Frontend.Modules.Inventory.ViewModels;
 using ERP.Frontend.Modules.Inventory.Views;
 using ERP.Frontend.Modules.Platform.ViewModels;
 using ERP.Frontend.Modules.Platform.Views;
+using ERP.Frontend.Modules.Reporting.ViewModels;
+using ERP.Frontend.Modules.Reporting.Views;
 using ERP.Frontend.Modules.Ui.ViewModels;
 using ERP.Frontend.Modules.Ui.Views;
 using ERP.Frontend.Shared.Mvvm;
@@ -25,6 +27,7 @@ public sealed class ViewLocator : IDataTemplate
         [typeof(DashboardViewModel)] = () => new DashboardView(),
         [typeof(BranchesViewModel)] = () => new BranchesView(),
         [typeof(ComponentGalleryViewModel)] = () => new ComponentGalleryView(),
+        [typeof(ReportingDashboardViewModel)] = () => new ReportingDashboardView(),
         [typeof(ModulePlaceholderViewModel)] = () => new ModulePlaceholderView(),
 
         // Inventario (Mendoza)
