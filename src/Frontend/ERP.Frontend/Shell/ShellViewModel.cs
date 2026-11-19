@@ -53,6 +53,11 @@ public sealed partial class ShellViewModel : ViewModelBase
             }
         }
 
+        if (session.EnabledFeatures.Contains("accounting") && session.Can("accounting.accounts.read"))
+        {
+            MenuItems.Add(new MenuEntry("Plan de cuentas", pages.AccountingAccounts));
+        }
+
         foreach (var module in FrontendModules.Pending.Where(m => session.EnabledFeatures.Contains(m.FeatureCode)))
         {
             MenuItems.Add(new MenuEntry(module.Title, () => pages.Placeholder(module)));
