@@ -1,3 +1,5 @@
+using ERP.Frontend.Modules.Accounting;
+using ERP.Frontend.Modules.Accounting.ViewModels;
 using ERP.Frontend.Modules.Inventory;
 using ERP.Frontend.Modules.Inventory.ViewModels;
 using ERP.Frontend.Modules.Platform.ViewModels;
@@ -27,6 +29,9 @@ public sealed class PageFactory(ErpApiClient api, SessionState session, Frontend
 
     public ModulePlaceholderViewModel Placeholder(FrontendModule module) => new(module);
 
+    // Contabilidad (Romero)
+    public AccountsViewModel AccountingAccounts() => new(new AccountingApi(api), session);
+
     // Inventario (Mendoza)
     public UnitsViewModel InventoryUnits() => new(new InventoryApi(api), session);
 
@@ -42,7 +47,6 @@ public static class FrontendModules
 {
     public static readonly IReadOnlyList<FrontendModule> Pending =
     [
-        new("accounting", "Contabilidad", "Integrante 2", "Plan de cuentas, períodos, asientos, libro diario y mayor."),
         new("sales", "Ventas", "Integrante 3", "Clientes, documentos de venta, cuentas por cobrar y comprobantes SRI."),
         new("purchases", "Compras y tesorería", "Integrante 4", "Proveedores, compras, pagos, cobros, caja y bancos."),
         new("reporting", "Reportes", "Integrante 6", "Dashboard, reportes PDF/Excel y conciliaciones internas."),
