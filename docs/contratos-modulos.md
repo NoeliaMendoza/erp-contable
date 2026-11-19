@@ -27,6 +27,15 @@ Reglas:
 - Un módulo nuevo **no** necesita tocar nada de esto: usa `ErpApiClient.GetAsync<T>` / `SendJsonAsync<T>`, que ya
   adjuntan token y empresa.
 
+## Plan de cuentas (ACC-01, Romero)
+
+El CRUD de `/api/v1/accounts` usa los permisos `accounting.accounts.read` y `accounting.accounts.write`.
+Empresa y auditoría se obtienen del servidor. El código es texto normalizado y único por empresa,
+incluso si la cuenta está inactiva; el padre pertenece a la misma empresa y no puede crear ciclos.
+La desactivación conserva las relaciones y no desactiva hijos en cascada.
+DTO, errores, migración y demostración: [modulos/contabilidad.md](modulos/contabilidad.md).
+Este mantenimiento no implementa todavía el servicio de contabilización del siguiente apartado.
+
 ## Accounting.Contracts — `IAccountingPostingService` (implementación pendiente, Integrante 2)
 - `PostAsync(PostingRequest)`: idempotente por `IdempotencyKey` (`"<modulo>:<tipo>:<id>"`), valida partida doble, período abierto y cuentas del tenant; devuelve el asiento existente si la clave ya se procesó.
 - `ReverseAsync(...)`: reverso auditable; nunca se borra un asiento contabilizado.
@@ -59,6 +68,7 @@ Todo módulo nuevo sigue este patrón (implementado primero en Inventario):
 | Método | Ruta | Permiso |
 |---|---|---|
 | GET | `/api/v1/me` | autenticado |
+| GET/POST/PUT/PATCH | `/api/v1/accounts` · `/{id}` · `/{id}/status` | `accounting.accounts.read` / `.write` |
 | GET | `/api/v1/tenant/current` | `platform.tenant.read` |
 | GET | `/api/v1/tenant/branches` · `/{id}` | `platform.branches.read` |
 | POST | `/api/v1/tenant/branches` | `platform.branches.manage` |
