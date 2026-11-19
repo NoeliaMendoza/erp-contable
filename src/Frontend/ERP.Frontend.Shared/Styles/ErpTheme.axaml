@@ -25,6 +25,10 @@
     <SolidColorBrush x:Key="ErpSuccessBrush" Color="#2E9E6B" />
     <SolidColorBrush x:Key="ErpWarningBrush" Color="#E0A12B" />
     <SolidColorBrush x:Key="ErpErrorBrush" Color="#D64545" />
+    <SolidColorBrush x:Key="ErpSuccessSurfaceBrush" Color="#EEF9F3" />
+    <SolidColorBrush x:Key="ErpSuccessBorderBrush" Color="#B8E0C8" />
+    <SolidColorBrush x:Key="ErpErrorSurfaceBrush" Color="#FDECEC" />
+    <SolidColorBrush x:Key="ErpErrorBorderBrush" Color="#F3B4B4" />
 
     <!-- Tarjetas de indicadores (pasteles) con su texto oscuro del mismo tono -->
     <SolidColorBrush x:Key="ErpKpiLavenderBrush" Color="#C9B8F5" />
@@ -88,6 +92,10 @@
   <Style Selector="TextBlock.small">
     <Setter Property="FontSize" Value="{StaticResource ErpFontSizeSmall}" />
   </Style>
+  <Style Selector="TextBlock.field-label">
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+
   <Style Selector="TextBlock.h1">
     <Setter Property="FontSize" Value="{StaticResource ErpFontSizeTitle}" />
     <Setter Property="FontWeight" Value="SemiBold" />
@@ -137,6 +145,28 @@
     <Setter Property="Foreground" Value="{StaticResource ErpOnKpiMintBrush}" />
   </Style>
 
+  <Style Selector="Border.feedback-error">
+    <Setter Property="Background" Value="{StaticResource ErpErrorSurfaceBrush}" />
+    <Setter Property="BorderBrush" Value="{StaticResource ErpErrorBorderBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="{StaticResource ErpRadius}" />
+    <Setter Property="Padding" Value="12" />
+  </Style>
+  <Style Selector="Border.feedback-success">
+    <Setter Property="Background" Value="{StaticResource ErpSuccessSurfaceBrush}" />
+    <Setter Property="BorderBrush" Value="{StaticResource ErpSuccessBorderBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="{StaticResource ErpRadius}" />
+    <Setter Property="Padding" Value="12" />
+  </Style>
+  <Style Selector="Border.empty-state">
+    <Setter Property="Background" Value="{StaticResource ErpSurfaceBrush}" />
+    <Setter Property="BorderBrush" Value="{StaticResource ErpBorderBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="{StaticResource ErpRadius}" />
+    <Setter Property="Padding" Value="24" />
+  </Style>
+
   <!-- Botones -->
   <Style Selector="Button.primary">
     <Setter Property="Background" Value="{StaticResource ErpPrimaryBrush}" />
@@ -147,5 +177,11 @@
   <Style Selector="Button.primary:pointerover /template/ ContentPresenter">
     <Setter Property="Background" Value="{StaticResource ErpPrimaryDarkBrush}" />
     <Setter Property="Foreground" Value="{StaticResource ErpOnPrimaryBrush}" />
+  </Style>
+  <Style Selector="Button.secondary">
+    <Setter Property="Background" Value="{StaticResource ErpCardBrush}" />
+    <Setter Property="BorderBrush" Value="{StaticResource ErpBorderBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="Padding" Value="16,8" />
   </Style>
 </Styles>

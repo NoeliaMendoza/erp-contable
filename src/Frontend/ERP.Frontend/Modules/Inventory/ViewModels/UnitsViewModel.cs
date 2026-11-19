@@ -33,10 +33,14 @@ public sealed partial class UnitsViewModel : ViewModelBase
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(PageLabel))]
+    [NotifyPropertyChangedFor(nameof(CanGoPrevious))]
+    [NotifyPropertyChangedFor(nameof(CanGoNext))]
     public partial int Page { get; set; } = 1;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(PageLabel))]
+    [NotifyPropertyChangedFor(nameof(CanGoPrevious))]
+    [NotifyPropertyChangedFor(nameof(CanGoNext))]
     public partial int TotalPages { get; set; } = 1;
 
     [ObservableProperty]
@@ -44,6 +48,10 @@ public sealed partial class UnitsViewModel : ViewModelBase
     public partial int TotalCount { get; set; }
 
     public string PageLabel => $"Página {Page} de {Math.Max(TotalPages, 1)}";
+
+    public bool CanGoPrevious => Page > 1;
+
+    public bool CanGoNext => Page < Math.Max(TotalPages, 1);
 
     public bool IsEmpty => TotalCount == 0 && !IsBusy;
 
@@ -73,19 +81,27 @@ public sealed partial class UnitsViewModel : ViewModelBase
     public string FormTitle => Editing is null ? "Nueva unidad" : $"Editar {Editing.Code}";
 
     [RelayCommand]
-    private Task LoadAsync() => RunAsync(async () =>
+    private Task LoadAsync()
     {
-        var result = await _api.ListUnitsAsync(Page, PageSize, Search, IncludeInactive ? null : true);
-        Units.Clear();
-        foreach (var unit in result.Items)
+        if (IsBusy)
         {
-            Units.Add(unit);
+            return Task.CompletedTask;
         }
 
-        TotalCount = result.TotalCount;
-        TotalPages = result.TotalPages;
-        OnPropertyChanged(nameof(IsEmpty));
-    });
+        return RunAsync(async () =>
+        {
+            var result = await _api.ListUnitsAsync(Page, PageSize, Search, IncludeInactive ? null : true);
+            Units.Clear();
+            foreach (var unit in result.Items)
+            {
+                Units.Add(unit);
+            }
+
+            TotalCount = result.TotalCount;
+            TotalPages = result.TotalPages;
+            OnPropertyChanged(nameof(IsEmpty));
+        });
+    }
 
     [RelayCommand]
     private Task SearchNowAsync()
@@ -93,6 +109,9 @@ public sealed partial class UnitsViewModel : ViewModelBase
         Page = 1;
         return LoadAsync();
     }
+
+    [RelayCommand]
+    private void ClearSearch() => Search = null;
 
     [RelayCommand]
     private Task NextPageAsync()
@@ -139,6 +158,11 @@ public sealed partial class UnitsViewModel : ViewModelBase
     [RelayCommand]
     private async Task SaveAsync()
     {
+        if (IsBusy)
+        {
+            return;
+        }
+
         ClearMessages();
         await RunAsync(async () =>
         {
@@ -174,7 +198,7 @@ public sealed partial class UnitsViewModel : ViewModelBase
     [RelayCommand]
     private async Task ConfirmToggleAsync()
     {
-        if (PendingToggle is not { } unit)
+        if (IsBusy || PendingToggle is not { } unit)
         {
             return;
         }
