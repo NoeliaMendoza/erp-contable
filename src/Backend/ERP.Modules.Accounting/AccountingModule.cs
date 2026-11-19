@@ -1,4 +1,8 @@
 using ERP.BuildingBlocks.Security;
+using ERP.Infrastructure.Persistence;
+using ERP.Modules.Accounting.Contracts;
+using ERP.Modules.Accounting.Data;
+using ERP.Modules.Accounting.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -18,6 +22,8 @@ public static class AccountingModule
     {
         _ = configuration;
         services.AddControllers().AddApplicationPart(typeof(AccountingModule).Assembly);
+        services.AddModuleDbContext<AccountingDbContext>(configuration, AccountingDbContext.Schema);
+        services.AddScoped<IAccountingPostingService, AccountingPostingService>();
         services.AddSingleton<IPermissionProvider, AccountingPermissionProvider>();
         return services;
     }

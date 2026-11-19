@@ -42,6 +42,14 @@ public sealed partial class ShellViewModel : ViewModelBase
                 MenuItems.Add(new MenuEntry("Productos y servicios", pages.InventoryProducts));
             }
 
+            if (session.EnabledFeatures.Contains("sales"))
+            {
+                if (session.Can("sales.invoices.issue") || session.Can("sales.invoices.read"))
+                {
+                    MenuItems.Add(new MenuEntry("Ventas", pages.Sales));
+                }
+            }
+
             if (session.Can("inventory.categories.read"))
             {
                 MenuItems.Add(new MenuEntry("Categorías", pages.InventoryCategories));

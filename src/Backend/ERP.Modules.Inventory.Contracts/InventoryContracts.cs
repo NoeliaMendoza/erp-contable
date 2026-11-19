@@ -31,7 +31,9 @@ public sealed record ProductSummary(
     bool IsActive,
     VatTreatment VatTreatment,
     bool TracksInventory,
-    string? Barcode);
+    string? Barcode,
+    decimal Price,
+    decimal? Cost);
 
 public sealed record StockLevel(Guid ProductId, Guid WarehouseId, decimal QuantityOnHand, decimal QuantityReserved);
 

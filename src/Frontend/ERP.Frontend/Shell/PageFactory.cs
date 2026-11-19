@@ -1,6 +1,8 @@
 using ERP.Frontend.Modules.Inventory;
 using ERP.Frontend.Modules.Inventory.ViewModels;
 using ERP.Frontend.Modules.Platform.ViewModels;
+using ERP.Frontend.Modules.Sales;
+using ERP.Frontend.Modules.Sales.ViewModels;
 using ERP.Frontend.Modules.Ui.ViewModels;
 using ERP.Frontend.Shared.Api;
 using ERP.Frontend.Shared.Mvvm;
@@ -33,6 +35,7 @@ public sealed class PageFactory(ErpApiClient api, SessionState session, Frontend
     public ProductsViewModel InventoryProducts() => new(new InventoryApi(api), session);
 
     public CategoriesViewModel InventoryCategories() => new(new InventoryApi(api), session);
+    public SalesViewModel Sales() => new(new SalesApi(api), new InventoryApi(api), session);
 }
 
 /// <summary>Módulos funcionales conocidos por el escritorio (el código coincide con tenant_features en la API).</summary>

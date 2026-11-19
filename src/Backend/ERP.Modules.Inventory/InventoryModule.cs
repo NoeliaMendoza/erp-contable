@@ -28,6 +28,8 @@ public static class InventoryModule
         services.AddScoped<ProductService>();
         services.AddScoped<CategoryService>();
         services.AddScoped<IProductCatalog, ProductCatalog>();
+        services.AddScoped<IStockQueryService, InventoryStockService>();
+        services.AddScoped<IInventoryMovementService, InventoryStockService>();
         services.AddValidatorsFromAssemblyContaining<SaveUnitRequestValidator>();
         services.AddSingleton<IPermissionProvider, InventoryPermissionProvider>();
         return services;

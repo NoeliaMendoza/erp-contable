@@ -1,4 +1,8 @@
 using ERP.BuildingBlocks.Security;
+using ERP.Infrastructure.Persistence;
+using ERP.Modules.Sales.Data;
+using ERP.Modules.Sales.Services;
+using ERP.Tributario.Tax;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -18,6 +22,8 @@ public static class SalesModule
     {
         _ = configuration;
         services.AddControllers().AddApplicationPart(typeof(SalesModule).Assembly);
+        services.AddModuleDbContext<SalesDbContext>(configuration, SalesDbContext.Schema);
+        services.AddScoped<SaleService>();
         services.AddSingleton<IPermissionProvider, SalesPermissionProvider>();
         return services;
     }
