@@ -38,10 +38,10 @@ Este mantenimiento no implementa todavía el servicio de contabilización del si
 
 ## Accounting.Contracts — ACUERDO-02 (#12)
 
-**Estado: definición propuesta v1 por Romero, preparada para revisión de Noe, Compras y Ventas.**
+**Estado: base v1 aprobada por Noe e integrada en el PR #25; ampliación de IVA propuesta para revisión.**
 Las firmas públicas existentes se conservan. La aprobación del acuerdo exige revisión del productor
 y de los consumidores; esta definición no declara implementado `IAccountingPostingService` ni completa ACC-03 (#17).
-El estado de cada decisión y la revisión requerida constan en [modulos/acuerdo02-propuesta.md](modulos/acuerdo02-propuesta.md).
+El estado de cada decisión y la revisión requerida por Noe, Compras y Ventas constan en [modulos/acuerdo02-propuesta.md](modulos/acuerdo02-propuesta.md).
 
 ### Entrada y resultado
 

@@ -1,11 +1,11 @@
 # ACUERDO-02 (#12): definición para revisión de Compras y Ventas
 
-Responsable: Romero (`joel1251`). Rama: `feature/accounting-acuerdo-02`.
+Responsable: Romero (`joel1251`). Rama de la ampliación: `feature/accounting-acuerdo-02-iva`.
 Fecha: 20 de noviembre de 2026.
 
-**Estado: propuesta completa de definición, pendiente de aprobación de Noe y los consumidores.**
-La ampliación de revisión incluye el IVA solicitado por Noe en el mensaje compartido por Romero;
-no se interpreta ese mensaje como una aprobación formal del PR ni como aceptación de todos los consumidores.
+**Estado: base aprobada por Noe e integrada en el PR #25; ampliación de IVA pendiente de revisión.**
+Se verificó la aprobación formal de Noe y la integración de #25. La ampliación incluye el IVA solicitado en
+el mensaje compartido por Romero, sin atribuir aprobación de este agregado ni aceptación a otros consumidores.
 El contrato detallado está en [../contratos-modulos.md](../contratos-modulos.md#accountingcontracts--acuerdo-02-12).
 Las firmas de `IAccountingPostingService`, `PostingRequest`, `PostingLine` y `PostingResult` se conservan;
 solo se amplía su documentación XML. No se implementa el servicio de ACC-03 en esta entrega.
@@ -13,6 +13,7 @@ solo se amplía su documentación XML. No se implementa el servicio de ACC-03 en
 ## Verificación de la asignación
 
 - Noe aprobó e integró el PR #24 de ACC-01 y cerró la tarea #6.
+- Noe aprobó e integró el PR #25 con la definición base; el IVA se entrega como ampliación de esa versión.
 - #12 permanece abierta y está asignada a Romero. No contiene comentarios nuevos con otras condiciones.
 - #17 permanece abierta y depende de este acuerdo.
 - En la consulta del tablero/tareas, Clientes #7 y Proveedores #8 todavía están abiertos.
@@ -29,7 +30,7 @@ solo se amplía su documentación XML. No se implementa el servicio de ACC-03 en
 | Documentación principal | Sección ACUERDO-02 en docs/contratos-modulos.md, con solicitudes C# compilables y condiciones de aceptación |
 
 Es una **definición del comportamiento**, no una ejecución de compra/venta ni una prueba del servicio aún inexistente.
-La aceptación de esas decisiones sigue pendiente de la revisión compartida.
+La aprobación de Noe de la base no reemplaza la revisión del IVA y la coordinación con los consumidores.
 
 ## Decisiones concretas que revisar
 
