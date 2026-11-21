@@ -68,7 +68,7 @@ public sealed class RowLevelSecurityTests(PostgresFixture db)
         var number = "RLS" + Guid.NewGuid().ToString("N")[..12].ToUpperInvariant();
         await ExecuteAsync(conn, tx, $"""
             INSERT INTO purchases.suppliers (id, tenant_id, identification_type, identification_number, name, is_active, created_at_utc)
-            VALUES ('{id}', '{A}', 'TEST', '{number}', 'RLS Supplier', true, now())
+            VALUES ('{id}', '{A}', '06', '{number}', 'RLS Supplier', true, now())
             """);
 
         await SetTenantAsync(conn, tx, B);
