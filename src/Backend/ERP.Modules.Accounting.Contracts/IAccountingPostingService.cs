@@ -22,6 +22,11 @@ public sealed record PostingLine(string AccountCode, decimal Debit, decimal Cred
 /// <param name="AccountingDate">Fecha contable (fecha local Ecuador, no instante UTC).</param>
 /// <param name="Description">Descripción requerida de la operación.</param>
 /// <param name="Lines">Al menos dos líneas; suma del debe igual a suma del haber y mayor que cero.</param>
+/// <remarks>
+/// Compras/Ventas resuelven y conservan el desglose fiscal del documento: el asiento recibe importes finales,
+/// incluidas las líneas de IVA cuando corresponda. Contabilidad no asume una tarifa ni recalcula el impuesto.
+/// El IVA de compra solo se lleva a su cuenta recuperable cuando el origen ha determinado ese tratamiento.
+/// </remarks>
 public sealed record PostingRequest(
     string IdempotencyKey,
     string SourceModule,
@@ -44,7 +49,8 @@ public sealed record PostingResult(Guid JournalEntryId, bool AlreadyProcessed);
 /// </summary>
 /// <remarks>
 /// ACUERDO-02 se documenta en docs/contratos-modulos.md y docs/modulos/acuerdo02-propuesta.md.
-/// La propuesta define compra de dos líneas y venta de productos de cuatro líneas (ingreso y costo juntos).
+/// Sin IVA, la propuesta define compra de dos líneas y venta de cuatro líneas (ingreso y costo juntos).
+/// Cuando aplica IVA se agregan sus líneas en el mismo asiento y con la misma clave del documento.
 /// Misma empresa/clave/contenido devuelve el asiento existente; misma clave con datos distintos es conflicto.
 /// Compartir la base no basta para atomicidad: el coordinador debe compartir conexión y transacción entre módulos.
 /// Las excepciones se propagan para revertir el caso de uso; no se devuelve éxito parcial.
