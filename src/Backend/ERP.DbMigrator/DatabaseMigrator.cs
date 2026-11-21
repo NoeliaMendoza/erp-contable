@@ -3,8 +3,8 @@ using ERP.Infrastructure.Tenancy;
 using ERP.Modules.Accounting.Data;
 using ERP.Modules.Inventory.Data;
 using ERP.Modules.Platform.Data;
-using ERP.Modules.Sales.Data;
 using ERP.Modules.Purchases.Data;
+using ERP.Modules.Sales.Data;
 using Microsoft.EntityFrameworkCore;
 
 namespace ERP.DbMigrator;
