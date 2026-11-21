@@ -45,7 +45,7 @@ public sealed record PostingResult(Guid JournalEntryId, bool AlreadyProcessed);
 /// Único camino para que otro módulo genere asientos. Ningún módulo inserta en tablas de Contabilidad.
 /// La implementación (Integrante 2) valida partida doble, período abierto, cuentas válidas del tenant
 /// e idempotencia, y participa en la transacción del caso de uso que la invoca.
-/// Estado: <b>firmas definidas, acuerdo operativo #12 pendiente de revisión e implementación #17 pendiente</b>.
+/// Estado: <b>firmas y acuerdo operativo #12 definidos; implementación #17 pendiente</b>.
 /// </summary>
 /// <remarks>
 /// ACUERDO-02 se documenta en docs/contratos-modulos.md y docs/modulos/acuerdo02-propuesta.md.
