@@ -6,6 +6,8 @@ using ERP.Frontend.Modules.Inventory.ViewModels;
 using ERP.Frontend.Modules.Inventory.Views;
 using ERP.Frontend.Modules.Platform.ViewModels;
 using ERP.Frontend.Modules.Platform.Views;
+using ERP.Frontend.Modules.Purchases.ViewModels;
+using ERP.Frontend.Modules.Purchases.Views;
 using ERP.Frontend.Modules.Ui.ViewModels;
 using ERP.Frontend.Modules.Ui.Views;
 using ERP.Frontend.Shared.Mvvm;
@@ -36,6 +38,7 @@ public sealed class ViewLocator : IDataTemplate
         [typeof(UnitsViewModel)] = () => new UnitsView(),
         [typeof(ProductsViewModel)] = () => new ProductsView(),
         [typeof(CategoriesViewModel)] = () => new CategoriesView(),
+        [typeof(SuppliersViewModel)] = () => new SuppliersView(),
     };
 
     public Control Build(object? param) =>

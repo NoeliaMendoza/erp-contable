@@ -12,6 +12,9 @@
     <ProjectReference Include="..\ERP.Modules.Inventory.Contracts\ERP.Modules.Inventory.Contracts.csproj" />
   </ItemGroup>
   <ItemGroup>
+    <PackageReference Include="FluentValidation.DependencyInjectionExtensions" />
+  </ItemGroup>
+  <ItemGroup>
     <InternalsVisibleTo Include="ERP.UnitTests" />
     <InternalsVisibleTo Include="ERP.IntegrationTests" />
   </ItemGroup>
