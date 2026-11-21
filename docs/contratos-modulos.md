@@ -83,17 +83,21 @@ El resultado es `PostingResult(JournalEntryId, AlreadyProcessed)`:
 | Ingreso de venta al contado | Ventas | Caja | Ventas | 20 |
 | Costo de los productos vendidos | Ventas, con costo calculado por Inventario | Costo de ventas | Inventario | 12 |
 
-**Propuesta concreta para revisar:** una compra genera un asiento de dos líneas; una venta de productos
-genera un solo asiento de cuatro líneas que incluye ingreso y costo. Así la venta tiene una única clave
+**Propuesta concreta para revisar:** en el ejemplo sin IVA, una compra genera un asiento de dos líneas;
+una venta de productos genera un solo asiento de cuatro líneas que incluye ingreso y costo.
+Cuando corresponda IVA se agregan sus líneas dentro del mismo asiento, según el apartado siguiente.
+Así la venta tiene una única clave
 contable; no se confirma el ingreso dejando pendiente otro envío para su costo. Una venta exclusivamente
 de servicios lleva solo las líneas de ingreso, sin movimiento ni costo de mercancía.
 
 Inventario entrega el costo mediante `InventoryMovementResult.TotalCost`; Ventas no lo reemplaza por el precio
 de venta ni lo recalcula leyendo tablas ajenas. Esta dependencia aún requiere implementar/acordar INV-03 y ACUERDO-01.
 
-Cada empresa debe tener identificados los códigos de Caja, Inventario, Ventas y Costo de ventas antes de confirmar.
+Cada empresa debe tener identificados los códigos de Caja, Inventario, Ventas y Costo de ventas antes de confirmar,
+y los de IVA compras recuperable e IVA ventas por pagar cuando la operación los requiera.
 Los códigos de los ejemplos siguientes son ficticios y no constituyen un plan obligatorio para todas las empresas.
-La configuración de mapeos completa (ACC-06, incluido IVA) queda fuera de este acuerdo inicial.
+La interfaz/tabla de configuración completa de mapeos (ACC-06) queda fuera de este acuerdo;
+la función de las cuentas de IVA sí se define aquí, sin imponer códigos universales.
 Si falta una cuenta configurada, la operación se rechaza; no se crean cuentas ni se escogen otras automáticamente.
 
 Ejemplos compilables de las solicitudes; definen datos, **no ejecutan el servicio todavía pendiente**:
@@ -137,6 +141,144 @@ var sale = new PostingRequest(
 En la compra: debe = haber = 30. En la venta completa: debe = haber = 32 (ingreso 20 y costo 12).
 El documento vendido conserva su importe de 20; 32 es la suma contable de las cuatro líneas.
 Este ejemplo excluye impuestos, descuentos y crédito; no es configuración fiscal de producción.
+
+### IVA de compras y ventas
+
+Ampliación solicitada por Noe para ACUERDO-02. Define el tratamiento de una operación al contado con IVA;
+no implementa todavía el cálculo comercial, un catálogo oficial, declaraciones, retenciones ni el servicio contable.
+
+**Responsabilidades y datos fiscales.** Compras/Ventas calculan y validan el impuesto del documento antes de
+solicitar el asiento. Usan el tratamiento del artículo (`VatTreatment`) y el código SRI aplicable, resuelto en
+`TaxRateCatalog.Resolve(TaxKind.Iva, sriCode, taxDate)`. `taxDate` es la fecha del hecho generador tributario
+que conserva el documento; no se sustituye automáticamente por `AccountingDate`, la hora del servidor o la fecha del reintento.
+El enum no es un porcentaje ni un código SRI: su correspondencia debe estar configurada y verificada.
+
+`Standard`, `ZeroRated`, `Exempt` y `NotSubject` son tratamientos distintos. Cero, exento y no objeto no se
+convierten entre sí porque su importe de impuesto sea cero. Debe conservarse la clasificación del documento.
+Para una tarifa aplicable se conserva un snapshot de código, porcentaje, base, impuesto, fecha tributaria,
+versión/fuente del catálogo y tratamiento. La elegibilidad del IVA de compra como recuperable también se conserva.
+Esos datos son responsabilidad del documento origen; `PostingRequest` sigue enviando códigos de cuenta e importes finales.
+El enlace módulo/tipo/ID permite auditar desde el asiento al desglose fiscal del documento, sin leer tablas de otro módulo.
+
+**Tarifas y verificación.** No fijar un porcentaje general en Contabilidad, Ventas, Compras ni en el producto.
+El catálogo debe aportar vigencia y fuente oficial. Una tarifa ausente produce `tax_rate_not_found`;
+un mapeo fiscal ausente o una tarifa no verificada bloquean la confirmación real, sin asumir cero.
+`Resolve` comprueba existencia/vigencia, pero **no comprueba por sí mismo `VerificationStatus.Verificado`**;
+esa comprobación corresponde al módulo origen. Los catálogos `Sintetico` sirven únicamente para pruebas aisladas.
+`ITaxRateCatalogProvider` todavía no tiene implementación y no hay un catálogo oficial cargado en este repositorio;
+esta definición no presenta esa dependencia como resuelta.
+
+**Base y redondeo propuestos para el ejemplo.** Los precios de 3 y 5 son valores antes de IVA. Compras/Ventas
+deben distinguir expresamente si sus precios incluyen el impuesto; no se aplica IVA otra vez sobre un total bruto.
+Para el recorrido inicial se propone base por línea e IVA por línea a dos decimales con `decimal` y
+`MidpointRounding.AwayFromZero`, sumando después los importes ya redondeados. D-05 y la compatibilidad de ese
+cálculo con los documentos/comprobantes del equipo quedan sujetos a revisión; no se declara una regla universal del SRI.
+Contabilidad recibe esos importes finales: no recalcula IVA ni inserta una diferencia para forzar el balance.
+Si el desglose no coincide con los totales del documento, el módulo origen rechaza la confirmación.
+
+**Cuentas por empresa.** Además de las cuatro cuentas base, identificar las siguientes cuando correspondan:
+
+| Función | Tipo del plan y naturaleza del ejemplo | Uso |
+|---|---|---|
+| IVA compras recuperable | Activo, deudora | Debe por el IVA de adquisición que sí corresponda reconocer como recuperable |
+| IVA ventas por pagar | Pasivo, acreedora | Haber por el IVA cobrado en la venta |
+
+No se crea una cuenta automáticamente ni se reutiliza una cuenta de otra empresa. Los códigos ficticios del
+ejemplo con IVA son `1.1.03` y `2.1.01`; cada empresa debe mapear sus códigos reales y permitir movimientos.
+La configuración de mapeos se debe coordinar con el equipo aunque su pantalla/tabla completa corresponda a ACC-06.
+
+**Compra con IVA recuperable.** Sea `IP` el IVA de la compra calculado por el módulo origen.
+Si corresponde recuperar todo ese IVA, el asiento es:
+
+| Cuenta | Debe | Haber |
+|---|---|---|
+| Inventario | 30 | 0 |
+| IVA compras recuperable | IP | 0 |
+| Caja | 0 | 30 + IP |
+
+El IVA recuperable no se suma al costo del inventario. **No se presume que toda compra da derecho a crédito.**
+Compras debe determinarlo según el documento y las reglas aplicables a la empresa. Si el IVA no es recuperable,
+su destino como costo o gasto debe estar definido con Contabilidad e Inventario antes de confirmar; no se envía
+a la cuenta de crédito tributario. El recorrido inicial no resuelve crédito parcial/proporcional ni permite confirmar
+cuando ese tratamiento esté pendiente. La valoración del inventario debe ser coherente con cualquier IVA llevado al costo.
+
+**Venta con IVA.** Sea `IV` el impuesto de la venta. Para productos, ingreso, IVA y costo se envían juntos:
+
+| Cuenta | Debe | Haber |
+|---|---|---|
+| Caja | 20 + IV | 0 |
+| Ventas | 0 | 20 |
+| IVA ventas por pagar | 0 | IV |
+| Costo de ventas | 12 | 0 |
+| Inventario | 0 | 12 |
+
+El impuesto cobrado se distingue del ingreso por ventas. El costo de salida es el valor ya determinado por
+Inventario; no se calcula nuevamente IVA sobre ese asiento de costo. Una venta de servicios conserva las
+líneas de Caja, Ventas e IVA cuando aplique, sin salida/costo de mercancía.
+Cuando el impuesto sea cero se omite su línea contable, porque `PostingLine` no admite debe/haber ambos cero;
+la clasificación fiscal cero/exento/no objeto permanece en el documento origen.
+
+**Ejemplo numérico de prueba, no tarifa vigente:** con un catálogo sintético del 10%, la compra da IP = 3,
+total 33 y debe/haber 33. La venta da IV = 2, cobro 22 y debe/haber del asiento completo 34 (22 + costo 12).
+El porcentaje no es una recomendación fiscal: solo demuestra el balance. El siguiente helper de documentación
+genera esos datos con la tarifa que reciba; no invoca el servicio ni valida la elegibilidad de un contribuyente.
+Su escenario presupone IVA de compra totalmente recuperable y precios antes de IVA:
+
+```csharp
+using ERP.Modules.Accounting.Contracts;
+using ERP.Tributario.Tax;
+
+static (PostingRequest Purchase, PostingRequest Sale) CreateVatExample(
+    TaxRateCatalog catalog, string sriCode, DateOnly taxDate, Guid purchaseId, Guid saleId)
+{
+    var rate = catalog.Resolve(TaxKind.Iva, sriCode, taxDate);
+    var purchaseVat = decimal.Round(30m * rate.Percentage / 100m, 2, MidpointRounding.AwayFromZero);
+    var saleVat = decimal.Round(20m * rate.Percentage / 100m, 2, MidpointRounding.AwayFromZero);
+    var purchaseLines = new List<PostingLine> { new("1.1.02", 30m, 0m, "Inventario") };
+    if (purchaseVat > 0m)
+    {
+        purchaseLines.Add(new("1.1.03", purchaseVat, 0m, "IVA compras recuperable"));
+    }
+
+    purchaseLines.Add(new("1.1.01", 0m, 30m + purchaseVat, "Caja"));
+    var saleLines = new List<PostingLine>
+    {
+        new("1.1.01", 20m + saleVat, 0m, "Caja"),
+        new("4.1.01", 0m, 20m, "Ventas"),
+    };
+    if (saleVat > 0m)
+    {
+        saleLines.Add(new("2.1.01", 0m, saleVat, "IVA ventas por pagar"));
+    }
+
+    saleLines.Add(new("5.1.01", 12m, 0m, "Costo de ventas"));
+    saleLines.Add(new("1.1.02", 0m, 12m, "Inventario"));
+    var purchase = new PostingRequest($"purchases:receipt:{purchaseId:D}", "purchases", "receipt",
+        purchaseId, taxDate, "Compra de prueba con IVA recuperable", purchaseLines);
+    var sale = new PostingRequest($"sales:invoice:{saleId:D}", "sales", "invoice",
+        saleId, taxDate, "Venta de prueba con IVA e inventario", saleLines);
+    return (purchase, sale);
+}
+```
+
+El helper iguala fecha tributaria y contable únicamente para este ejemplo. El módulo real debe conservar ambas
+si difieren y comprobar que la tarifa sea oficial/verificada antes de confirmar o emitir; el helper acepta catálogos
+sintéticos porque es un ejemplo aislado, no una ruta de producción. Para documentos con distintas tarifas,
+se conserva el desglose fiscal por línea/grupo en el origen, sin aplicar una única tarifa a toda la factura.
+
+El IVA forma parte del contenido protegido por la misma clave de idempotencia. Un reintento usa el snapshot
+original y las mismas líneas; no vuelve a resolver otra tarifa con la fecha actual. Misma clave con IVA o total
+distinto es conflicto, no otro asiento. Si falta tarifa, cuenta o tratamiento de recuperabilidad, la operación completa
+debe fallar dentro del flujo de documento/stock/asiento ya descrito, sin éxito parcial.
+
+**Fuente y alcance:** [SRI: Impuesto al Valor Agregado](https://www.sri.gob.ec/impuesto-al-valor-agregado-iva),
+consultado para esta ampliación el 20/11/2026. La fuente describe base, tratamientos y crédito sujeto a condiciones;
+no se carga de ella una tarifa fija ni se sustituye la verificación de la normativa aplicable a cada fecha/documento.
+Retenciones, notas de crédito, declaraciones y crédito proporcional requieren sus propios acuerdos y no se habilitan aquí.
+La separación del impuesto recuperable del costo de inventario del ejemplo también sigue la referencia de
+[IAS 2, párrafo 11 (IFRS Foundation, edición 2021)](https://www.ifrs.org/content/dam/ifrs/publications/pdf-standards/english/2021/issued/part-a/ias-2-inventories.pdf),
+que excluye del costo de compra los impuestos recuperables. Esta referencia contable no determina por sí sola
+si una empresa tiene derecho al crédito tributario en Ecuador.
 
 ### Idempotencia y solicitudes simultáneas
 
@@ -194,10 +336,10 @@ nunca borrarlo ni modificar sus líneas. Fecha, motivo, permiso y período deben
 No se habilita esa operación hasta acordar la corrección del documento y sus efectos sobre inventario;
 un reverso contable por sí solo no anula una venta ni devuelve stock.
 
-Antes de aceptar #12, productor y consumidores revisan la agrupación de venta/costo, códigos por empresa,
-política monetaria inicial, transacción compartida, períodos y errores. Después de integrar el acuerdo y la primera
+Antes de aceptar #12, productor y consumidores revisan la agrupación de venta/costo/IVA, códigos por empresa,
+tarifas y crédito recuperable, política monetaria inicial, transacción compartida, períodos y errores. Después de integrar el acuerdo y la primera
 entrega completa, ACC-03 deberá probar: ejemplo 30/20/12, reintento idéntico y distinto, concurrencia,
-aislamiento entre empresas y rollback de documento/stock/asiento. Aquí se define ese comportamiento;
+aislamiento entre empresas, IVA positivo/cero, vigencias y falta de configuración fiscal, y rollback de documento/stock/asiento. Aquí se define ese comportamiento;
 no se presenta como implementado ni probado todavía.
 
 ## Inventory.Contracts (Mendoza)
