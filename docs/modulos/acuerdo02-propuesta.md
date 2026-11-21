@@ -3,9 +3,9 @@
 Responsable: Romero (`joel1251`). Rama de la ampliación: `feature/accounting-acuerdo-02-iva`.
 Fecha: 20 de noviembre de 2026.
 
-**Estado: base aprobada por Noe e integrada en el PR #25; ampliación de IVA pendiente de revisión.**
-Se verificó la aprobación formal de Noe y la integración de #25. La ampliación incluye el IVA solicitado en
-el mensaje compartido por Romero, sin atribuir aprobación de este agregado ni aceptación a otros consumidores.
+**Estado: base e IVA aprobados por Noe e integrados en los PR #25 y #26; #12 cerrada por Noe.**
+Se verificaron las aprobaciones formales, las integraciones y el cierre. El ejemplo principal se ajusta al 15%
+indicado por Romero y respaldado por la circular del SRI; el ajuste no implica una implementación del servicio.
 El contrato detallado está en [../contratos-modulos.md](../contratos-modulos.md#accountingcontracts--acuerdo-02-12).
 Las firmas de `IAccountingPostingService`, `PostingRequest`, `PostingLine` y `PostingResult` se conservan;
 solo se amplía su documentación XML. No se implementa el servicio de ACC-03 en esta entrega.
@@ -13,8 +13,8 @@ solo se amplía su documentación XML. No se implementa el servicio de ACC-03 en
 ## Verificación de la asignación
 
 - Noe aprobó e integró el PR #24 de ACC-01 y cerró la tarea #6.
-- Noe aprobó e integró el PR #25 con la definición base; el IVA se entrega como ampliación de esa versión.
-- #12 permanece abierta y está asignada a Romero. No contiene comentarios nuevos con otras condiciones.
+- Noe aprobó e integró el PR #25 con la definición base y el PR #26 con IVA; después cerró #12.
+- #12 permanece asignada a Romero, con estado cerrado. El ajuste del ejemplo no reabre la tarea.
 - #17 permanece abierta y depende de este acuerdo.
 - En la consulta del tablero/tareas, Clientes #7 y Proveedores #8 todavía están abiertos.
   La preparación de este contrato no declara integrada la primera entrega completa ni habilita #17.
@@ -30,7 +30,7 @@ solo se amplía su documentación XML. No se implementa el servicio de ACC-03 en
 | Documentación principal | Sección ACUERDO-02 en docs/contratos-modulos.md, con solicitudes C# compilables y condiciones de aceptación |
 
 Es una **definición del comportamiento**, no una ejecución de compra/venta ni una prueba del servicio aún inexistente.
-La aprobación de Noe de la base no reemplaza la revisión del IVA y la coordinación con los consumidores.
+Noe aceptó la definición y el IVA. Los cambios futuros del contrato siguen requiriendo coordinación con sus consumidores.
 
 ## Decisiones concretas que revisar
 
@@ -65,7 +65,9 @@ La definición completa, las tablas de asientos y el helper C# están en el apar
 - Los porcentajes se resuelven con `TaxRateCatalog` por código y fecha tributaria. La aplicación real debe comprobar
   fuente/vigencia/estado Verificado; el proveedor y catálogo oficial siguen pendientes.
 - Se propone redondeo explícito por línea a dos decimales y sumar los resultados; sujeto a D-05 y revisión compartida.
-- El ejemplo auxiliar usa una tarifa sintética del 10%: compra 33/33, venta/costo 34/34. No es una tarifa del SRI.
+- El ejemplo principal usa IVA general de Ecuador al 15%, con referencia a la circular del SRI:
+  compra de base 30, IVA 4.50 y total 34.50; venta de base 20, IVA 3.00 y cobro 23.00.
+  El asiento de venta y costo suma 35.00 por cada lado. El porcentaje se obtiene del catálogo, sin fijarlo en el módulo.
 - Los reintentos reutilizan los importes y el snapshot originales, sin volver a calcular con la tarifa del día.
 
 ## Revisión y siguiente paso
@@ -73,8 +75,8 @@ La definición completa, las tablas de asientos y el helper C# están en el apar
 Noe coordina la aceptación con los responsables actuales de Compras y Ventas. La decisión de costo también requiere
 la participación de Inventario. No se atribuye aprobación a ningún integrante por haber leído o generado esta propuesta.
 
-Después de revisar, actualizar aquí las decisiones finales, aprobar/integrar el PR y registrar el acuerdo en #12.
-Solo entonces se puede considerar cerrado el acuerdo. ACC-03 requiere además la primera entrega completa integrada.
+El acuerdo quedó cerrado por Noe tras integrar #25 y #26. Esta aceptación corresponde a la definición:
+ACC-03 requiere además la primera entrega completa integrada y todavía debe implementar el servicio.
 Sus pruebas futuras deben demostrar partidas balanceadas, idempotencia, aislamiento y rollback del caso de uso completo.
 
 Este cambio no genera migraciones, no modifica módulos de compañeros, no toca main ni se conecta a Neon.
@@ -89,8 +91,9 @@ Este cambio no genera migraciones, no modifica módulos de compañeros, no toca 
 Ampliación IVA: los dos bloques C# del contrato principal se extrajeron y compilaron juntos contra
 `Accounting.Contracts` y `ERP.Tributario`, sin errores ni advertencias. Se verificaron los ejemplos sin IVA,
 IVA sintético positivo, cambio de tarifa por vigencia, IVA cero sin líneas vacías, redondeo propuesto
-y rechazo de código o vigencia ausentes. Con 10% sintético: compra 33/33 y venta/costo 34/34;
-con 11% sintético: 33.30/33.30 y 34.20/34.20. Estos resultados no acreditan un catálogo oficial,
+y rechazo de código o vigencia ausentes. En el ejemplo principal al 15%: compra 34.50/34.50 y venta/costo 35.00/35.00.
+La ejecución usa catálogos aislados; otros porcentajes de fixtures solo verifican mecánica de vigencias/redondeo,
+sin afirmar que sean tarifas generales vigentes. Estos resultados no acreditan un catálogo oficial cargado,
 la elegibilidad del crédito, la emisión de comprobantes ni el funcionamiento del servicio contable pendiente.
 
 No se ejecutó `IAccountingPostingService`: su implementación y las pruebas de persistencia/idempotencia

@@ -38,9 +38,9 @@ Este mantenimiento no implementa todavía el servicio de contabilización del si
 
 ## Accounting.Contracts — ACUERDO-02 (#12)
 
-**Estado: base v1 aprobada por Noe e integrada en el PR #25; ampliación de IVA propuesta para revisión.**
-Las firmas públicas existentes se conservan. La aprobación del acuerdo exige revisión del productor
-y de los consumidores; esta definición no declara implementado `IAccountingPostingService` ni completa ACC-03 (#17).
+**Estado: base v1 e IVA aprobados por Noe e integrados en los PR #25 y #26; tarea #12 cerrada por Noe.**
+Las firmas públicas existentes se conservan. La revisión y coordinación del productor con los consumidores
+se mantiene para cambios posteriores; esta definición no declara implementado `IAccountingPostingService` ni completa ACC-03 (#17).
 El estado de cada decisión y la revisión requerida por Noe, Compras y Ventas constan en [modulos/acuerdo02-propuesta.md](modulos/acuerdo02-propuesta.md).
 
 ### Entrada y resultado
@@ -218,10 +218,15 @@ líneas de Caja, Ventas e IVA cuando aplique, sin salida/costo de mercancía.
 Cuando el impuesto sea cero se omite su línea contable, porque `PostingLine` no admite debe/haber ambos cero;
 la clasificación fiscal cero/exento/no objeto permanece en el documento origen.
 
-**Ejemplo numérico de prueba, no tarifa vigente:** con un catálogo sintético del 10%, la compra da IP = 3,
-total 33 y debe/haber 33. La venta da IV = 2, cobro 22 y debe/haber del asiento completo 34 (22 + costo 12).
-El porcentaje no es una recomendación fiscal: solo demuestra el balance. El siguiente helper de documentación
-genera esos datos con la tarifa que reciba; no invoca el servicio ni valida la elegibilidad de un contribuyente.
+**Ejemplo principal de Ecuador con IVA general del 15%:** para la compra de base 30, IP = 4.50,
+total pagado 34.50 y debe/haber 34.50. Para la venta de base 20, IV = 3.00, cobro total 23.00
+y debe/haber del asiento completo 35.00 (23.00 + costo 12).
+La referencia es la [Circular SRI NAC-DGECCGC25-00000006](https://www.sri.gob.ec/o/sri-portlet-biblioteca-alfresco-internet/descargar?id=236482f4-6125-42fd-b073-62c99d08233d&nombre=NAC-DGECCGC25-00000006.pdf),
+que mantiene la tarifa general del 15% hasta que se modifique por decreto. No se extiende ese porcentaje
+a artículos con tarifa cero, exentos, no objeto o a regímenes/fechas con una tarifa especial aplicable.
+El siguiente helper obtiene el porcentaje del catálogo suministrado; no lo fija dentro de Compras/Ventas/Contabilidad,
+no invoca el servicio ni valida la elegibilidad de un contribuyente. Las pruebas ejecutables usan un catálogo aislado,
+que no sustituye el proveedor/catálogo oficial pendiente.
 Su escenario presupone IVA de compra totalmente recuperable y precios antes de IVA:
 
 ```csharp
@@ -271,9 +276,11 @@ original y las mismas líneas; no vuelve a resolver otra tarifa con la fecha act
 distinto es conflicto, no otro asiento. Si falta tarifa, cuenta o tratamiento de recuperabilidad, la operación completa
 debe fallar dentro del flujo de documento/stock/asiento ya descrito, sin éxito parcial.
 
-**Fuente y alcance:** [SRI: Impuesto al Valor Agregado](https://www.sri.gob.ec/impuesto-al-valor-agregado-iva),
-consultado para esta ampliación el 20/11/2026. La fuente describe base, tratamientos y crédito sujeto a condiciones;
-no se carga de ella una tarifa fija ni se sustituye la verificación de la normativa aplicable a cada fecha/documento.
+**Fuentes y alcance:** [Circular SRI NAC-DGECCGC25-00000006](https://www.sri.gob.ec/o/sri-portlet-biblioteca-alfresco-internet/descargar?id=236482f4-6125-42fd-b073-62c99d08233d&nombre=NAC-DGECCGC25-00000006.pdf)
+para la continuidad de la tarifa general del 15%, y [SRI: Impuesto al Valor Agregado](https://www.sri.gob.ec/impuesto-al-valor-agregado-iva)
+para base, tratamientos y crédito sujeto a condiciones; consultadas para esta ampliación el 20/11/2026.
+La tarifa del ejemplo se verifica con la circular específica, no solo con el texto general de la página informativa.
+No se convierte en una constante del módulo ni sustituye la verificación de normativa por fecha/documento.
 Retenciones, notas de crédito, declaraciones y crédito proporcional requieren sus propios acuerdos y no se habilitan aquí.
 La separación del impuesto recuperable del costo de inventario del ejemplo también sigue la referencia de
 [IAS 2, párrafo 11 (IFRS Foundation, edición 2021)](https://www.ifrs.org/content/dam/ifrs/publications/pdf-standards/english/2021/issued/part-a/ias-2-inventories.pdf),
@@ -448,6 +455,17 @@ Una compra o venta no debe quedar confirmada a medias.
 - `EcuadorIdValidator` (sintáctico), `TaxRateCatalog` / `ITaxRateCatalogProvider` (tarifas por vigencia, nunca constantes), contratos SRI (`ISriGateway`, `IElectronicDocumentSigner`, `IAccessKeyGenerator`, `IElectronicDocumentXmlBuilder`).
   ACUERDO-03 fija simulación como nivel de esta entrega; el ambiente de pruebas y producción requieren inputs y verificaciones documentados en
   [`docs/validaciones/acuerdo-sri-nivel-entrega.md`](validaciones/acuerdo-sri-nivel-entrega.md).
+- `EcuadorIdentificationCatalog` es la lista compartida por Clientes y Proveedores. Mantiene el código SRI, nombre y reglas de validación/uso para cada tipo; Ventas y Compras no deben declarar catálogos paralelos.
+
+| Tipo | Código SRI | Regla del número | Clientes | Proveedores |
+|---|---:|---|:---:|:---:|
+| RUC | `04` | 13 dígitos; validación sintáctica con `EcuadorIdValidator` | Sí | Sí |
+| Cédula | `05` | 10 dígitos; validación sintáctica con `EcuadorIdValidator` | Sí | Sí |
+| Pasaporte | `06` | Texto de hasta 20 caracteres | Sí | Sí |
+| Consumidor final | `07` | `9999999999999` | Sí | No |
+| Identificación del exterior | `08` | Texto | Sí | Sí |
+
+Normalización común: eliminar espacios y guiones antes de validar o guardar. El pasaporte además se convierte a mayúsculas. El módulo de Compras rechaza `07`, porque un proveedor siempre debe tener una identificación propia.
 
 ## Reporting ← módulos
 - Cada módulo publica consultas de lectura (proyecciones) en su `*.Contracts` cuando Reporting las necesite. Prohibido el acceso directo a tablas ajenas.
@@ -474,6 +492,8 @@ Todo módulo nuevo sigue este patrón (implementado primero en Inventario):
 | GET/POST/PUT/PATCH | `/api/v1/units` · `/{id}` · `/{id}/status` | `inventory.units.read` / `.write` |
 | GET/POST/PUT/PATCH | `/api/v1/categories` · `/{id}` · `/{id}/status` | `inventory.categories.read` / `.write` |
 | GET/POST/PUT/PATCH | `/api/v1/products` · `/{id}` · `/{id}/status` | `inventory.products.read` / `.write` |
+| GET/POST/PUT/PATCH | `/api/v1/suppliers` · `/{id}` · `/{id}/status` | `purchases.suppliers.read` / `.write` |
+| GET | `/api/v1/suppliers/identification-types` | `purchases.suppliers.read` |
 | GET | `/api/v1/tenant/taxpayers` | `platform.taxpayers.read` |
 
 Los modelos del escritorio (`ERP.Frontend.Shared/Api/ApiModels.cs`) se mantienen sincronizados manualmente con estos DTO.

@@ -106,6 +106,7 @@ public sealed class DevelopmentSeeder(DatabaseMigrator migrator, string? demoPas
         InventoryPermissions.ProductsRead,
         InventoryPermissions.CategoriesRead,
         SalesPermissions.CustomersRead,
+        PurchasesPermissions.SuppliersRead,
     ];
 
     /// <summary>Catálogo ficticio mínimo (ejemplo del plan: cuadernos a USD 5) para la empresa que vende productos.</summary>

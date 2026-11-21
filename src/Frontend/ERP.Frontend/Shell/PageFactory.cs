@@ -5,6 +5,8 @@ using ERP.Frontend.Modules.Inventory.ViewModels;
 using ERP.Frontend.Modules.Platform.ViewModels;
 using ERP.Frontend.Modules.Sales;
 using ERP.Frontend.Modules.Sales.ViewModels;
+using ERP.Frontend.Modules.Purchases;
+using ERP.Frontend.Modules.Purchases.ViewModels;
 using ERP.Frontend.Modules.Ui.ViewModels;
 using ERP.Frontend.Shared.Api;
 using ERP.Frontend.Shared.Mvvm;
@@ -42,6 +44,7 @@ public sealed class PageFactory(ErpApiClient api, SessionState session, Frontend
     public CategoriesViewModel InventoryCategories() => new(new InventoryApi(api), session);
     public SalesViewModel Sales() => new(new SalesApi(api), new InventoryApi(api), session);
     public CustomersViewModel Customers() => new(new SalesApi(api), session);
+    public SuppliersViewModel PurchaseSuppliers() => new(new PurchasesApi(api), session);
 }
 
 /// <summary>Módulos funcionales conocidos por el escritorio (el código coincide con tenant_features en la API).</summary>
@@ -51,7 +54,6 @@ public static class FrontendModules
 {
     public static readonly IReadOnlyList<FrontendModule> Pending =
     [
-        new("purchases", "Compras y tesorería", "Integrante 4", "Proveedores, compras, pagos, cobros, caja y bancos."),
         new("reporting", "Reportes", "Integrante 6", "Dashboard, reportes PDF/Excel y conciliaciones internas."),
     ];
 }

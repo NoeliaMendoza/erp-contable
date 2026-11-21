@@ -4,6 +4,7 @@ using ERP.Modules.Accounting.Data;
 using ERP.Modules.Inventory.Data;
 using ERP.Modules.Platform.Data;
 using ERP.Modules.Sales.Data;
+using ERP.Modules.Purchases.Data;
 using Microsoft.EntityFrameworkCore;
 
 namespace ERP.DbMigrator;
@@ -34,6 +35,9 @@ public sealed class DatabaseMigrator(string migratorConnectionString)
         await sales.Database.MigrateAsync(cancellationToken);
         await using var accounting = CreateAccountingContext(TenantSession.ForSystem());
         await accounting.Database.MigrateAsync(cancellationToken);
+
+        await using var purchases = CreatePurchasesContext(TenantSession.ForSystem());
+        await purchases.Database.MigrateAsync(cancellationToken);
     }
 
     internal PlatformDbContext CreatePlatformContext(TenantSession session)
@@ -73,5 +77,13 @@ public sealed class DatabaseMigrator(string migratorConnectionString)
         PersistenceRegistration.ConfigureNpgsql(options, migratorConnectionString, AccountingDbContext.Schema);
         options.AddInterceptors(new TenantSessionInterceptor(session));
         return new AccountingDbContext(options.Options, session);
+    }
+
+    internal PurchasesDbContext CreatePurchasesContext(TenantSession session)
+    {
+        var options = new DbContextOptionsBuilder<PurchasesDbContext>();
+        PersistenceRegistration.ConfigureNpgsql(options, migratorConnectionString, PurchasesDbContext.Schema);
+        options.AddInterceptors(new TenantSessionInterceptor(session));
+        return new PurchasesDbContext(options.Options, session);
     }
 }
