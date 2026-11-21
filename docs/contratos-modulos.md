@@ -349,6 +349,8 @@ no se presenta como implementado ni probado todavía.
 
 ## Tributario (`ERP.Tributario`)
 - `EcuadorIdValidator` (sintáctico), `TaxRateCatalog` / `ITaxRateCatalogProvider` (tarifas por vigencia, nunca constantes), contratos SRI (`ISriGateway`, `IElectronicDocumentSigner`, `IAccessKeyGenerator`, `IElectronicDocumentXmlBuilder`).
+  ACUERDO-03 fija simulación como nivel de esta entrega; el ambiente de pruebas y producción requieren inputs y verificaciones documentados en
+  [`docs/validaciones/acuerdo-sri-nivel-entrega.md`](validaciones/acuerdo-sri-nivel-entrega.md).
 
 ## Reporting ← módulos
 - Cada módulo publica consultas de lectura (proyecciones) en su `*.Contracts` cuando Reporting las necesite. Prohibido el acceso directo a tablas ajenas.
