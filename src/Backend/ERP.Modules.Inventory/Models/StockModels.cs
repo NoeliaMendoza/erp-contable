@@ -22,12 +22,44 @@ public sealed class StockBalance : ITenantOwned
 
     public void Adjust(decimal quantity)
     {
-        QuantityOnHand = decimal.Round(QuantityOnHand + quantity, 4);
-        if (QuantityOnHand < 0)
+        if (quantity == 0m)
+        {
+            throw new ERP.BuildingBlocks.Domain.DomainException("stock_quantity_invalid",
+                "La cantidad del movimiento debe ser distinta de cero.");
+        }
+
+        if (decimal.Round(quantity, 4) != quantity)
+        {
+            throw new ERP.BuildingBlocks.Domain.DomainException("stock_quantity_scale",
+                "La cantidad admite como máximo 4 decimales.");
+        }
+
+        var adjusted = decimal.Round(QuantityOnHand + quantity, 4);
+        if (adjusted < QuantityReserved)
         {
             throw new ERP.BuildingBlocks.Domain.DomainException("stock_insufficient",
                 "No hay stock disponible suficiente para confirmar la salida.");
         }
+
+        QuantityOnHand = adjusted;
+    }
+
+    public void Reserve(decimal quantity)
+    {
+        if (quantity <= 0m || decimal.Round(quantity, 4) != quantity)
+        {
+            throw new ERP.BuildingBlocks.Domain.DomainException("stock_reservation_invalid",
+                "La cantidad reservada debe ser positiva y tener máximo 4 decimales.");
+        }
+
+        var reserved = decimal.Round(QuantityReserved + quantity, 4);
+        if (reserved > QuantityOnHand)
+        {
+            throw new ERP.BuildingBlocks.Domain.DomainException("stock_insufficient",
+                "No hay stock disponible suficiente para reservar.");
+        }
+
+        QuantityReserved = reserved;
     }
 }
 

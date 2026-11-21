@@ -23,6 +23,25 @@ public sealed class InventoryStockService(InventoryDbContext db, ITenantContext 
         db.InTenantTransactionAsync(async ct =>
         {
             var tenantId = tenant.RequireTenantId();
+            if (string.IsNullOrWhiteSpace(request.IdempotencyKey))
+                throw new DomainException("movement_idempotency_required", "El movimiento requiere una clave de idempotencia.");
+            if (request.SourceDocumentId == Guid.Empty)
+                throw new DomainException("movement_source_document_required", "El movimiento debe identificar su documento de origen.");
+            if (request.WarehouseId == Guid.Empty)
+                throw new DomainException("movement_warehouse_required", "Debe seleccionar una bodega válida.");
+            if (string.IsNullOrWhiteSpace(request.SourceModule) || string.IsNullOrWhiteSpace(request.SourceDocumentType))
+                throw new DomainException("movement_source_required", "El movimiento debe identificar módulo y tipo de documento origen.");
+            if (!Enum.IsDefined(request.Kind))
+                throw new DomainException("movement_kind_invalid", "El tipo de movimiento no es válido.");
+            if (request.Lines.Count == 0)
+                throw new DomainException("movement_no_lines", "El movimiento debe contener al menos una línea.");
+            if (request.Lines.Any(l => l.ProductId == Guid.Empty
+                                      || l.Quantity <= 0m
+                                      || decimal.Round(l.Quantity, 4) != l.Quantity
+                                      || l.UnitCost is < 0m
+                                      || (l.UnitCost is { } cost && decimal.Round(cost, 4) != cost)))
+                throw new DomainException("movement_line_invalid", "Una línea del movimiento tiene cantidad, artículo o costo inválido.");
+
             var existing = await db.InventoryMovements.AsNoTracking()
                 .SingleOrDefaultAsync(m => m.IdempotencyKey == request.IdempotencyKey, ct);
             if (existing is not null)

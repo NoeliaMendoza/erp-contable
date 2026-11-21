@@ -344,8 +344,63 @@ no se presenta como implementado ni probado todavía.
 
 ## Inventory.Contracts (Mendoza)
 - `IProductCatalog.GetByIdsAsync`: **implementado** (INV-01). Solo artículos de la empresa activa; incluye `VatTreatment` (Ventas resuelve el código SRI y el porcentaje vigente con `TaxRateCatalog`), `TracksInventory` y `Barcode`; detalle en [modulos/inventario.md](modulos/inventario.md).
-- `IStockQueryService.GetStockAsync`: pendiente (INV-03).
-- `IInventoryMovementService.RegisterAsync(InventoryMovementRequest)`: idempotente, con control de concurrencia; política de stock negativo y costeo → D-06.
+- `IStockQueryService.GetStockAsync`: contrato implementado. Consulta solo por artículo y bodega de la empresa activa.
+- `IInventoryMovementService.RegisterAsync(InventoryMovementRequest)`: contrato implementado con idempotencia y política sin stock negativo.
+
+## ACUERDO-04 — movimientos de inventario entre Compras, Ventas e Inventario
+
+**Estado:** acordado y integrado por el contrato compartido. Mendoza implementa el servicio,
+Casas solicita salidas y Torres solicitará entradas.
+
+### Solicitud
+
+Compras y Ventas llaman a `IInventoryMovementService.RegisterAsync(InventoryMovementRequest, CancellationToken)`.
+No consultan ni modifican tablas de Inventario directamente.
+
+| Dato | Regla |
+|---|---|
+| Empresa | `ITenantContext.RequireTenantId()`; nunca se acepta un tenant editable |
+| `IdempotencyKey` | Única por empresa y operación estable; repetirla devuelve el movimiento original |
+| `SourceModule` | `purchases` o `sales` |
+| `SourceDocumentType` | Tipo persistente del documento de origen |
+| `SourceDocumentId` | UUID del documento confirmado |
+| `WarehouseId` | Bodega de la empresa activa |
+| `Kind` | Entrada, salida, ajuste o transferencia |
+| `MovementDate` | Fecha del hecho generador, `DateOnly` |
+| `Lines` | Artículo, cantidad positiva con máximo 4 decimales y costo unitario opcional |
+
+El costo unitario se usa en entradas y movimientos que requieren valorización. Ventas conserva
+el costo referencial del artículo para trazabilidad del ejemplo; el costeo definitivo depende de INV-05.
+
+### Consulta
+
+Compras y Ventas pueden usar `IStockQueryService.GetStockAsync(productId, warehouseId, cancellationToken)`
+para consultar disponibilidad. Un saldo inexistente se interpreta como cero disponible.
+El dato devuelto incluye existencia física y reservada; el disponible es física menos reservada.
+
+### Stock negativo
+
+La política acordada es **no permitir stock negativo**. Una salida rechaza la operación si la cantidad
+supera el disponible. El resultado HTTP de negocio usa `stock_insufficient` mediante `422 Unprocessable Entity`.
+Los servicios y artículos con `TracksInventory=false` se omiten sin crear movimiento ni línea.
+
+### Idempotencia y concurrencia
+
+La clave de idempotencia se persiste con el movimiento y es única por empresa.
+Una repetición devuelve `AlreadyProcessed=true` y el `MovementId` original, sin consumir stock otra vez.
+
+Las modificaciones de un mismo saldo deben ser controladas por transacción y bloqueo de concurrencia
+de base de datos. Dos confirmaciones simultáneas no pueden consumir ambas el último stock.
+
+### Fallo completo
+
+Una compra o venta no debe quedar confirmada a medias.
+
+- Validación de catálogo/precio/stock falla antes de confirmar el documento.
+- El fallo de Inventario propaga la excepción y revierte el caso de uso origen.
+- El fallo contable propaga la excepción y revierte la operación origen. La integración final usa una
+  transacción compartida o, si las bases cambian, compensación/outbox acordada; no se acepta éxito parcial.
+- Una respuesta incierta debe reconciliarse antes de repetir; no se crea un segundo documento.
 
 ## Tributario (`ERP.Tributario`)
 - `EcuadorIdValidator` (sintáctico), `TaxRateCatalog` / `ITaxRateCatalogProvider` (tarifas por vigencia, nunca constantes), contratos SRI (`ISriGateway`, `IElectronicDocumentSigner`, `IAccessKeyGenerator`, `IElectronicDocumentXmlBuilder`).
