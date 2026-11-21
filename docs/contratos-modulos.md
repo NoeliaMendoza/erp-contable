@@ -36,11 +36,169 @@ La desactivación conserva las relaciones y no desactiva hijos en cascada.
 DTO, errores, migración y demostración: [modulos/contabilidad.md](modulos/contabilidad.md).
 Este mantenimiento no implementa todavía el servicio de contabilización del siguiente apartado.
 
-## Accounting.Contracts — `IAccountingPostingService` (implementación pendiente, Integrante 2)
-- `PostAsync(PostingRequest)`: idempotente por `IdempotencyKey` (`"<modulo>:<tipo>:<id>"`), valida partida doble, período abierto y cuentas del tenant; devuelve el asiento existente si la clave ya se procesó.
-- `ReverseAsync(...)`: reverso auditable; nunca se borra un asiento contabilizado.
-- Las cuentas se referencian por **código** del plan del tenant; la tabla de mapeo (p. ej. "cuenta de IVA ventas") la define Contabilidad con Ventas/Compras (ACC-06).
-- Transacción: se ejecuta dentro de la transacción del caso de uso llamador (misma base). Si en el futuro se separan bases → documentar outbox.
+## Accounting.Contracts — ACUERDO-02 (#12)
+
+**Estado: definición propuesta v1 por Romero, preparada para revisión de Noe, Compras y Ventas.**
+Las firmas públicas existentes se conservan. La aprobación del acuerdo exige revisión del productor
+y de los consumidores; esta definición no declara implementado `IAccountingPostingService` ni completa ACC-03 (#17).
+El estado de cada decisión y la revisión requerida constan en [modulos/acuerdo02-propuesta.md](modulos/acuerdo02-propuesta.md).
+
+### Entrada y resultado
+
+Los módulos llaman a `IAccountingPostingService.PostAsync(PostingRequest, CancellationToken)`
+dentro del servidor. No escriben directamente en tablas contables ni agregan un endpoint público de contabilización.
+
+| Dato | Contrato |
+|---|---|
+| Empresa | `ITenantContext.RequireTenantId()` de la solicitud autenticada y autorizada; no se añade un TenantId editable al DTO |
+| `IdempotencyKey` | Texto estable de la operación, generado a partir del módulo, tipo e ID persistente del documento |
+| `SourceModule` | `purchases` o `sales` en este incremento; debe corresponder al módulo que confirma el documento |
+| `SourceDocumentType` | `receipt` para la compra recibida; `invoice` para la venta del ejemplo |
+| `SourceDocumentId` | UUID no vacío del documento de la empresa activa; el módulo propietario verifica su pertenencia |
+| `AccountingDate` | `DateOnly` de la operación en Ecuador; no se sustituye por la fecha UTC del servidor |
+| `Description` | Descripción no vacía; sin credenciales ni datos personales innecesarios |
+| `Lines` | Al menos dos `PostingLine(AccountCode, Debit, Credit, Memo)`; Memo es opcional |
+
+La empresa y el usuario de auditoría se obtienen del contexto confiable. Cada cuenta se resuelve por **código**
+normalizado dentro de esa empresa y debe existir, estar activa y permitir movimientos. Una cuenta ajena,
+inexistente, inactiva o no apta se rechaza sin revelar datos de otra empresa.
+
+Cada línea usa `decimal` en USD, con debe XOR haber positivo, sin negativos y como máximo dos decimales.
+La propuesta conserva la escala provisional existente de `AccountingMoney` (D-05); el servicio no redondea
+ni agrega diferencias para cuadrar. El módulo origen debe enviar importes finales ya calculados.
+La suma del debe debe ser exactamente igual a la del haber y mayor que cero. D-05 no se considera cerrada
+para impuestos, descuentos, moneda extranjera ni reglas de redondeo adicionales.
+
+El resultado es `PostingResult(JournalEntryId, AlreadyProcessed)`:
+
+- Primera solicitud: ID del asiento persistido, `AlreadyProcessed = false`.
+- Reintento idéntico: mismo ID, `AlreadyProcessed = true`; no se crean más asientos ni líneas.
+- El resultado no equivale al commit del caso de uso: solo se comunica éxito al cliente después del commit global.
+
+### Cuentas y responsabilidad de cada operación
+
+| Operación | Quién solicita | Debe | Haber | Importe didáctico |
+|---|---|---|---|---|
+| Compra recibida al contado | Compras | Inventario | Caja | 30 |
+| Ingreso de venta al contado | Ventas | Caja | Ventas | 20 |
+| Costo de los productos vendidos | Ventas, con costo calculado por Inventario | Costo de ventas | Inventario | 12 |
+
+**Propuesta concreta para revisar:** una compra genera un asiento de dos líneas; una venta de productos
+genera un solo asiento de cuatro líneas que incluye ingreso y costo. Así la venta tiene una única clave
+contable; no se confirma el ingreso dejando pendiente otro envío para su costo. Una venta exclusivamente
+de servicios lleva solo las líneas de ingreso, sin movimiento ni costo de mercancía.
+
+Inventario entrega el costo mediante `InventoryMovementResult.TotalCost`; Ventas no lo reemplaza por el precio
+de venta ni lo recalcula leyendo tablas ajenas. Esta dependencia aún requiere implementar/acordar INV-03 y ACUERDO-01.
+
+Cada empresa debe tener identificados los códigos de Caja, Inventario, Ventas y Costo de ventas antes de confirmar.
+Los códigos de los ejemplos siguientes son ficticios y no constituyen un plan obligatorio para todas las empresas.
+La configuración de mapeos completa (ACC-06, incluido IVA) queda fuera de este acuerdo inicial.
+Si falta una cuenta configurada, la operación se rechaza; no se crean cuentas ni se escogen otras automáticamente.
+
+Ejemplos compilables de las solicitudes; definen datos, **no ejecutan el servicio todavía pendiente**:
+
+```csharp
+using ERP.Modules.Accounting.Contracts;
+
+var purchaseId = Guid.Parse("0195a000-0000-7000-8000-000000000030");
+var saleId = Guid.Parse("0195a000-0000-7000-8000-000000000020");
+var date = new DateOnly(2026, 11, 20);
+
+var purchase = new PostingRequest(
+    IdempotencyKey: $"purchases:receipt:{purchaseId:D}",
+    SourceModule: "purchases",
+    SourceDocumentType: "receipt",
+    SourceDocumentId: purchaseId,
+    AccountingDate: date,
+    Description: "Compra al contado: 10 cuadernos a USD 3",
+    Lines:
+    [
+        new PostingLine("1.1.02", 30m, 0m, "Inventario"),
+        new PostingLine("1.1.01", 0m, 30m, "Caja"),
+    ]);
+
+var sale = new PostingRequest(
+    IdempotencyKey: $"sales:invoice:{saleId:D}",
+    SourceModule: "sales",
+    SourceDocumentType: "invoice",
+    SourceDocumentId: saleId,
+    AccountingDate: date,
+    Description: "Venta al contado: 4 cuadernos a USD 5; costo total USD 12",
+    Lines:
+    [
+        new PostingLine("1.1.01", 20m, 0m, "Caja"),
+        new PostingLine("4.1.01", 0m, 20m, "Ventas"),
+        new PostingLine("5.1.01", 12m, 0m, "Costo de ventas"),
+        new PostingLine("1.1.02", 0m, 12m, "Inventario"),
+    ]);
+```
+
+En la compra: debe = haber = 30. En la venta completa: debe = haber = 32 (ingreso 20 y costo 12).
+El documento vendido conserva su importe de 20; 32 es la suma contable de las cuatro líneas.
+Este ejemplo excluye impuestos, descuentos y crédito; no es configuración fiscal de producción.
+
+### Idempotencia y solicitudes simultáneas
+
+- Clave canónica del ejemplo: `<modulo>:<tipo>:<uuid-en-formato-D>`, conservada en todos los reintentos.
+  El emisor no genera otro UUID ni clave por intento y no reutiliza la clave para una corrección.
+- La unicidad se aplica a `(tenant_id, idempotency_key)`, no globalmente. La misma clave en otra empresa
+  es independiente; ninguna consulta de reintento debe saltarse el tenant.
+- Propuesta para contenido repetido: comparar módulo, tipo, ID, fecha, descripción y todas las líneas,
+  incluidos importes, Memo y orden, tras recortar textos y normalizar códigos de cuenta según ACC-01.
+  El emisor debe conservar ese orden. Misma clave con datos distintos -> conflicto 409, sin sobrescribir.
+- Buscar primero un asiento ya confirmado: si el reintento coincide, devolverlo aunque después se haya cerrado
+  el período o desactivado una cuenta. Eso no autoriza un asiento nuevo con esas condiciones.
+- La implementación de ACC-03 debe resolver dos peticiones simultáneas con restricción única en PostgreSQL.
+  Un `AnyAsync` previo no garantiza idempotencia. Una colisión no puede dejar una transacción abortada
+  y luego intentar continuar con consultas sin rollback/savepoint válido.
+
+### Fallos y transacción del documento completo
+
+| Situación | Resultado del contrato propuesto |
+|---|---|
+| Descripción vacía | `DomainException`, `journal_description_required`, 422 |
+| Líneas insuficientes o importes inválidos | `journal_min_lines`, `journal_line_negative`, `journal_line_side` o `journal_line_scale`, 422 |
+| Asiento desbalanceado | `DomainException`, `journal_unbalanced`, 422 |
+| Cuenta no disponible para esa empresa | `DomainException`, `posting_account_not_available`, 422; nuevo código propuesto |
+| Origen o clave no válidos | `DomainException`, `posting_source_invalid`, 422; nuevo código propuesto |
+| Período cerrado | `DomainException`, `period_closed`, 422 |
+| Misma clave con contenido distinto | `ConflictException`, `posting_idempotency_conflict`, 409; nuevo código propuesto |
+| Cancelación, desconexión o fallo de base | No devolver un resultado de éxito; revertir la operación o consultar/reintentar con su misma identidad si el resultado quedó incierto |
+
+Los códigos `journal_*` y `period_closed` ya existen en el dominio; los nuevos se implementarán en ACC-03.
+Las excepciones internas no son respuestas HTTP: el host las transforma a `ProblemDetails` con `code` y `traceId`
+usando el manejador común. Se mantienen 400/401/403 para empresa ausente, autenticación y autorización según
+los contratos existentes. No se convierte cualquier error de infraestructura en un rechazo de negocio 422.
+
+El caso de uso de Compras/Ventas controla el commit. Documento, movimiento de stock y asiento deben
+guardarse en **una misma conexión y transacción PostgreSQL**, manteniendo la empresa durante toda la operación.
+Los servicios participantes no hacen commits propios ni cambian el tenant. Ante una excepción se revierte todo;
+la interfaz no confirma una venta o recepción parcialmente guardada.
+
+**Brecha actual comprobada:** `AddModuleDbContext` registra contextos con conexiones independientes;
+`InTenantTransactionAsync` solo reutiliza `CurrentTransaction` del contexto recibido. Llamar sucesivamente a ambos
+servicios no implementa por sí solo la transacción compartida. Antes de habilitar la confirmación integrada,
+el responsable de integración debe coordinar una conexión/transacción por caso de uso y enlistar los contextos,
+por ejemplo mediante `UseTransactionAsync`. Los contratos siguen sin depender de EF, Npgsql ni ASP.NET.
+Referencia: [transacciones entre contextos en EF Core](https://learn.microsoft.com/en-us/ef/core/saving/transactions#cross-context-transaction).
+
+La política y el mecanismo para saber si un período está abierto todavía requieren acuerdo e implementación;
+no se presume abierto por ausencia de catálogo. La llamada al SRI es externa y se recupera por estados,
+no dentro de la transacción PostgreSQL. Si se separan bases en el futuro, se requiere otro acuerdo sobre outbox/consistencia.
+
+### Reversos y aceptación
+
+`ReverseAsync(...)` conserva su firma: debe generar otro asiento auditable y enlazado al original,
+nunca borrarlo ni modificar sus líneas. Fecha, motivo, permiso y período deben validarse.
+No se habilita esa operación hasta acordar la corrección del documento y sus efectos sobre inventario;
+un reverso contable por sí solo no anula una venta ni devuelve stock.
+
+Antes de aceptar #12, productor y consumidores revisan la agrupación de venta/costo, códigos por empresa,
+política monetaria inicial, transacción compartida, períodos y errores. Después de integrar el acuerdo y la primera
+entrega completa, ACC-03 deberá probar: ejemplo 30/20/12, reintento idéntico y distinto, concurrencia,
+aislamiento entre empresas y rollback de documento/stock/asiento. Aquí se define ese comportamiento;
+no se presenta como implementado ni probado todavía.
 
 ## Inventory.Contracts (Mendoza)
 - `IProductCatalog.GetByIdsAsync`: **implementado** (INV-01). Solo artículos de la empresa activa; incluye `VatTreatment` (Ventas resuelve el código SRI y el porcentaje vigente con `TaxRateCatalog`), `TracksInventory` y `Barcode`; detalle en [modulos/inventario.md](modulos/inventario.md).
