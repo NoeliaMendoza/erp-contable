@@ -1,0 +1,108 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:ERP.Frontend.Modules.Purchases.ViewModels"
+             xmlns:pur="using:ERP.Frontend.Modules.Purchases"
+             xmlns:controls="using:ERP.Frontend.Shared.Controls"
+             x:Class="ERP.Frontend.Modules.Purchases.Views.SuppliersView"
+             x:DataType="vm:SuppliersViewModel">
+  <StackPanel Spacing="14">
+    <DockPanel>
+      <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8">
+        <Button Content="Nuevo proveedor" Command="{Binding NewSupplierCommand}" IsVisible="{Binding CanWrite}" />
+        <Button Content="Actualizar" Command="{Binding LoadCommand}" />
+      </StackPanel>
+      <TextBlock Classes="h1" Text="Proveedores" />
+    </DockPanel>
+
+    <controls:FeedbackBar IsBusy="{Binding IsBusy}" ErrorMessage="{Binding ErrorMessage}"
+                          SuccessMessage="{Binding SuccessMessage}" RetryCommand="{Binding LoadCommand}" />
+
+    <Border Classes="card" IsVisible="{Binding CanWrite}">
+      <StackPanel Spacing="8">
+        <DockPanel>
+          <Button DockPanel.Dock="Right" Content="Cancelar" Command="{Binding NewSupplierCommand}" />
+          <TextBlock Classes="h2" Text="{Binding FormTitle}" />
+        </DockPanel>
+        <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="8" RowDefinitions="Auto,Auto,Auto" RowSpacing="5">
+          <controls:FormField Grid.Row="0" Grid.Column="0" Label="Tipo de identificación" ErrorMessage="{Binding IdentificationTypeError}">
+            <controls:FormField.FieldContent>
+              <ComboBox ItemsSource="{Binding IdentificationTypes}" SelectedItem="{Binding SelectedIdentificationType}"
+                        HorizontalAlignment="Stretch" AutomationProperties.Name="Tipo de identificación">
+                <ComboBox.ItemTemplate>
+                  <DataTemplate x:DataType="pur:SupplierIdentificationTypeOption">
+                    <TextBlock Text="{Binding Name}" />
+                  </DataTemplate>
+                </ComboBox.ItemTemplate>
+              </ComboBox>
+            </controls:FormField.FieldContent>
+          </controls:FormField>
+          <controls:FormField Grid.Row="0" Grid.Column="1" Label="Número" ErrorMessage="{Binding IdentificationNumberError}">
+            <controls:FormField.FieldContent><TextBox Text="{Binding IdentificationNumber}" /></controls:FormField.FieldContent>
+          </controls:FormField>
+          <controls:FormField Grid.Row="0" Grid.Column="2" Grid.ColumnSpan="2" Label="Nombre o razón social" ErrorMessage="{Binding NameError}">
+            <controls:FormField.FieldContent><TextBox Text="{Binding Name}" /></controls:FormField.FieldContent>
+          </controls:FormField>
+          <controls:FormField Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Label="Correo electrónico (opcional)" ErrorMessage="{Binding EmailError}">
+            <controls:FormField.FieldContent><TextBox Text="{Binding Email}" /></controls:FormField.FieldContent>
+          </controls:FormField>
+          <controls:FormField Grid.Row="1" Grid.Column="2" Label="Teléfono (opcional)">
+            <controls:FormField.FieldContent><TextBox Text="{Binding Phone}" /></controls:FormField.FieldContent>
+          </controls:FormField>
+          <controls:FormField Grid.Row="1" Grid.Column="3" Label="Dirección (opcional)">
+            <controls:FormField.FieldContent><TextBox Text="{Binding Address}" /></controls:FormField.FieldContent>
+          </controls:FormField>
+          <Button Grid.Row="2" Grid.Column="3" Classes="primary" Content="Guardar" Command="{Binding SaveCommand}"
+                  VerticalAlignment="Bottom" IsDefault="True" />
+        </Grid>
+      </StackPanel>
+    </Border>
+
+    <controls:ConfirmationDialog IsVisible="{Binding PendingToggle, Converter={x:Static ObjectConverters.IsNotNull}}"
+                                 Title="Cambiar estado"
+                                 Message="{Binding PendingToggle.Name, StringFormat='¿Cambiar el estado de {0}?'}"
+                                 IsBusy="{Binding IsBusy}" ErrorMessage="{Binding ErrorMessage}"
+                                 ConfirmCommand="{Binding ConfirmToggleCommand}" CancelCommand="{Binding CancelToggleCommand}" />
+
+    <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+      <controls:SearchBox Grid.Column="0" SearchText="{Binding Search, Mode=TwoWay}"
+                          PlaceholderText="Buscar por nombre o identificación" ClearCommand="{Binding ClearSearchCommand}" />
+      <CheckBox Grid.Column="1" Content="Incluir inactivos" IsChecked="{Binding IncludeInactive}" />
+      <Button Grid.Column="2" Content="Buscar" Command="{Binding SearchNowCommand}" />
+    </Grid>
+
+    <Border Classes="card">
+      <StackPanel Spacing="4">
+        <Grid ColumnDefinitions="2*,2*,*,2*,2*">
+          <TextBlock Classes="muted" Text="Proveedor" />
+          <TextBlock Grid.Column="1" Classes="muted" Text="Identificación" />
+          <TextBlock Grid.Column="2" Classes="muted" Text="Estado" />
+          <TextBlock Grid.Column="3" Classes="muted" Text="Correo" />
+        </Grid>
+        <controls:EmptyState IsVisible="{Binding IsEmpty}" Title="No hay proveedores" Message="Registre el primer proveedor para esta empresa." />
+        <ItemsControl ItemsSource="{Binding Suppliers}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="pur:SupplierItem">
+              <Grid ColumnDefinitions="2*,2*,*,2*,2*" Margin="0,4">
+                <TextBlock FontWeight="SemiBold" Text="{Binding Name}" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="1" Text="{Binding Identification}" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="2" Classes="muted" Text="{Binding Status}" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="3" Text="{Binding Email}" VerticalAlignment="Center" />
+                <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="6"
+                            IsVisible="{Binding $parent[UserControl].((vm:SuppliersViewModel)DataContext).CanWrite}">
+                  <Button Content="Editar" CommandParameter="{Binding}"
+                          Command="{Binding $parent[UserControl].((vm:SuppliersViewModel)DataContext).EditCommand}" />
+                  <Button Content="Activar / desactivar" CommandParameter="{Binding}"
+                          Command="{Binding $parent[UserControl].((vm:SuppliersViewModel)DataContext).AskToggleCommand}" />
+                </StackPanel>
+              </Grid>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </StackPanel>
+    </Border>
+
+    <controls:PaginationBar CurrentPage="{Binding Page}" TotalPages="{Binding TotalPages}"
+                            CanGoPrevious="{Binding CanGoPrevious}" CanGoNext="{Binding CanGoNext}"
+                            PreviousCommand="{Binding PreviousPageCommand}" NextCommand="{Binding NextPageCommand}" />
+  </StackPanel>
+</UserControl>

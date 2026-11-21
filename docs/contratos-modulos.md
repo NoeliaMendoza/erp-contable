@@ -349,6 +349,17 @@ no se presenta como implementado ni probado todavía.
 
 ## Tributario (`ERP.Tributario`)
 - `EcuadorIdValidator` (sintáctico), `TaxRateCatalog` / `ITaxRateCatalogProvider` (tarifas por vigencia, nunca constantes), contratos SRI (`ISriGateway`, `IElectronicDocumentSigner`, `IAccessKeyGenerator`, `IElectronicDocumentXmlBuilder`).
+- `EcuadorIdentificationCatalog` es la lista compartida por Clientes y Proveedores. Mantiene el código SRI, nombre y reglas de validación/uso para cada tipo; Ventas y Compras no deben declarar catálogos paralelos.
+
+| Tipo | Código SRI | Regla del número | Clientes | Proveedores |
+|---|---:|---|:---:|:---:|
+| RUC | `04` | 13 dígitos; validación sintáctica con `EcuadorIdValidator` | Sí | Sí |
+| Cédula | `05` | 10 dígitos; validación sintáctica con `EcuadorIdValidator` | Sí | Sí |
+| Pasaporte | `06` | Texto de hasta 20 caracteres | Sí | Sí |
+| Consumidor final | `07` | `9999999999999` | Sí | No |
+| Identificación del exterior | `08` | Texto | Sí | Sí |
+
+Normalización común: eliminar espacios y guiones antes de validar o guardar. El pasaporte además se convierte a mayúsculas. El módulo de Compras rechaza `07`, porque un proveedor siempre debe tener una identificación propia.
 
 ## Reporting ← módulos
 - Cada módulo publica consultas de lectura (proyecciones) en su `*.Contracts` cuando Reporting las necesite. Prohibido el acceso directo a tablas ajenas.
@@ -375,6 +386,8 @@ Todo módulo nuevo sigue este patrón (implementado primero en Inventario):
 | GET/POST/PUT/PATCH | `/api/v1/units` · `/{id}` · `/{id}/status` | `inventory.units.read` / `.write` |
 | GET/POST/PUT/PATCH | `/api/v1/categories` · `/{id}` · `/{id}/status` | `inventory.categories.read` / `.write` |
 | GET/POST/PUT/PATCH | `/api/v1/products` · `/{id}` · `/{id}/status` | `inventory.products.read` / `.write` |
+| GET/POST/PUT/PATCH | `/api/v1/suppliers` · `/{id}` · `/{id}/status` | `purchases.suppliers.read` / `.write` |
+| GET | `/api/v1/suppliers/identification-types` | `purchases.suppliers.read` |
 | GET | `/api/v1/tenant/taxpayers` | `platform.taxpayers.read` |
 
 Los modelos del escritorio (`ERP.Frontend.Shared/Api/ApiModels.cs`) se mantienen sincronizados manualmente con estos DTO.

@@ -37,6 +37,7 @@ public sealed class RowLevelSecurityTests(PostgresFixture db)
     [InlineData("inventory.units")]
     [InlineData("inventory.products")]
     [InlineData("inventory.categories")]
+    [InlineData("purchases.suppliers")]
     public async Task Sin_contexto_de_tenant_no_se_ve_ninguna_fila(string table)
     {
         await using var conn = await OpenAsync(db.AppConnectionString);
@@ -55,6 +56,28 @@ public sealed class RowLevelSecurityTests(PostgresFixture db)
 
         Assert.Equal(1L, tenantsInBranches);
         Assert.Equal(0L, foreign);
+    }
+
+    [Fact]
+    public async Task Rls_de_proveedores_aisla_empresas_y_conserva_baja_logica()
+    {
+        await using var conn = await OpenAsync(db.AppConnectionString);
+        await using var tx = await conn.BeginTransactionAsync(Ct);
+        await SetTenantAsync(conn, tx, A);
+        var id = Guid.NewGuid();
+        var number = "RLS" + Guid.NewGuid().ToString("N")[..12].ToUpperInvariant();
+        await ExecuteAsync(conn, tx, $"""
+            INSERT INTO purchases.suppliers (id, tenant_id, identification_type, identification_number, name, is_active, created_at_utc)
+            VALUES ('{id}', '{A}', 'TEST', '{number}', 'RLS Supplier', true, now())
+            """);
+
+        await SetTenantAsync(conn, tx, B);
+        Assert.Equal(0L, await ScalarAsync<long>(conn, tx, $"SELECT count(*) FROM purchases.suppliers WHERE id = '{id}'"));
+        Assert.Equal(0, await ExecuteAsync(conn, tx, $"UPDATE purchases.suppliers SET is_active = false WHERE id = '{id}'"));
+
+        await SetTenantAsync(conn, tx, A);
+        Assert.Equal(1L, await ScalarAsync<long>(conn, tx, $"SELECT count(*) FROM purchases.suppliers WHERE id = '{id}' AND is_active"));
+        await tx.RollbackAsync(Ct);
     }
 
     [Fact]
