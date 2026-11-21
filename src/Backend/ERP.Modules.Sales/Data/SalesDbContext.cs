@@ -13,6 +13,7 @@ public sealed class SalesDbContext(DbContextOptions<SalesDbContext> options, ITe
     public const string Schema = "sales";
     public DbSet<Sale> Sales => Set<Sale>();
     public DbSet<SaleLine> SaleLines => Set<SaleLine>();
+    public DbSet<Customer> Customers => Set<Customer>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -43,6 +44,18 @@ public sealed class SalesDbContext(DbContextOptions<SalesDbContext> options, ITe
             b.Property(x => x.LineTotal).HasPrecision(18, 2);
             b.HasOne<Sale>().WithMany(s => s.Lines).HasForeignKey(x => new { x.TenantId, x.SaleId })
                 .HasPrincipalKey(s => new { s.TenantId, s.Id }).OnDelete(DeleteBehavior.Cascade);
+        });
+        modelBuilder.Entity<Customer>(b =>
+        {
+            b.ToTable("customers");
+            b.HasAlternateKey(x => new { x.TenantId, x.Id });
+            b.HasIndex(x => new { x.TenantId, x.IdentificationType, x.IdentificationNumber }).IsUnique();
+            b.Property(x => x.IdentificationType).HasConversion<string>().HasMaxLength(20);
+            b.Property(x => x.IdentificationNumber).HasMaxLength(Customer.IdentificationNumberMaxLength).IsRequired();
+            b.Property(x => x.Name).HasMaxLength(Customer.NameMaxLength).IsRequired();
+            b.Property(x => x.Email).HasMaxLength(Customer.EmailMaxLength);
+            b.Property(x => x.Phone).HasMaxLength(Customer.PhoneMaxLength);
+            b.Property(x => x.Address).HasMaxLength(Customer.AddressMaxLength);
         });
         base.OnModelCreating(modelBuilder);
     }

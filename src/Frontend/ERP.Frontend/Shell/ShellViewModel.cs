@@ -44,6 +44,10 @@ public sealed partial class ShellViewModel : ViewModelBase
 
             if (session.EnabledFeatures.Contains("sales"))
             {
+                if (session.Can("sales.customers.read"))
+                {
+                    MenuItems.Add(new MenuEntry("Clientes", pages.Customers));
+                }
                 if (session.Can("sales.invoices.issue") || session.Can("sales.invoices.read"))
                 {
                     MenuItems.Add(new MenuEntry("Ventas", pages.Sales));

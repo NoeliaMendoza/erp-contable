@@ -342,6 +342,48 @@ entrega completa, ACC-03 deberá probar: ejemplo 30/20/12, reintento idéntico y
 aislamiento entre empresas, IVA positivo/cero, vigencias y falta de configuración fiscal, y rollback de documento/stock/asiento. Aquí se define ese comportamiento;
 no se presenta como implementado ni probado todavía.
 
+## Customers/Identification (Sales)
+
+ACUERDO con Compras (Torres): el catálogo compartido de tipos de identificación usa estos valores:
+
+| Valor API | Texto visible | Número máximo | Normalización |
+|---|---|---|---|
+| `Ruc` | RUC | 13 caracteres | Trim; solo dígitos; la estructura ecuatoriana se valida como advertencia |
+| `Cedula` | Cédula | 10 caracteres | Trim; solo dígitos; el validador ecuatoriano se usa como advertencia |
+| `Pasaporte` | Pasaporte | 20 caracteres | Trim; MAYÚSCULAS |
+| `ConsumidorFinal` | Consumidor final | 20 caracteres | Trim; MAYÚSCULAS |
+
+El cliente usa el mismo catálogo que los proveedores futuros. `EcuadorIdValidator` nunca rechaza
+un documento por sí solo en esta entrega: su resultado se puede mostrar como advertencia y el
+registro persiste. RUC, cédula, pasaporte y consumidor final son texto; no se usan identificadores
+numéricos ni algoritmos locales como barreras de alta.
+
+Reglas comunes:
+
+- Nombre obligatorio, máximo 200 caracteres.
+- Email opcional, máximo 320 caracteres y formato válido.
+- Teléfono opcional, máximo 30 caracteres.
+- Dirección opcional, máximo 300 caracteres.
+- Baja lógica; no se elimina físicamente.
+- Unicidad por `(tenant_id, identification_type, identification_number)`.
+- El mismo número puede existir en otra empresa o con otro tipo.
+
+## API CRUD de clientes
+
+Ruta: `/api/v1/customers`.
+
+| Operación | Ruta | Permiso |
+|---|---|---|
+| Listar | `GET /api/v1/customers` | `sales.customers.read` |
+| Detalle | `GET /api/v1/customers/{id}` | `sales.customers.read` |
+| Crear | `POST /api/v1/customers` | `sales.customers.write` |
+| Editar | `PUT /api/v1/customers/{id}` | `sales.customers.write` |
+| Activar/desactivar | `PATCH /api/v1/customers/{id}/status` | `sales.customers.write` |
+
+La lista usa paginación común y búsqueda por nombre, número, email o teléfono.
+Crear o editar devuelve `409` ante duplicado compuesto por empresa, tipo y número.
+Los identificadores ajenos responden `404`; sin sesión `401`; sin permiso o empresa ajena `403`.
+
 ## Inventory.Contracts (Mendoza)
 - `IProductCatalog.GetByIdsAsync`: **implementado** (INV-01). Solo artículos de la empresa activa; incluye `VatTreatment` (Ventas resuelve el código SRI y el porcentaje vigente con `TaxRateCatalog`), `TracksInventory` y `Barcode`; detalle en [modulos/inventario.md](modulos/inventario.md).
 - `IStockQueryService.GetStockAsync`: contrato implementado. Consulta solo por artículo y bodega de la empresa activa.
