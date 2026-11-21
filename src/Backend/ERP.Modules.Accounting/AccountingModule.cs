@@ -3,14 +3,16 @@ using ERP.Infrastructure.Persistence;
 using ERP.Modules.Accounting.Contracts;
 using ERP.Modules.Accounting.Data;
 using ERP.Modules.Accounting.Services;
+using ERP.Modules.Accounting.Validators;
+using FluentValidation;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace ERP.Modules.Accounting;
 
 /// <summary>
-/// Módulo Contabilidad (Integrante 2). Estado: dominio de asientos con partida doble <b>implementado y probado</b>;
-/// persistencia, endpoints e <c>IAccountingPostingService</c> <b>pendientes</b>.
+/// Módulo Contabilidad (Romero). ACC-01: CRUD del plan de cuentas con persistencia y aislamiento por empresa.
+/// Incluye además el registro idempotente de asientos usado por Ventas.
 /// </summary>
 public static class AccountingModule
 {
@@ -20,10 +22,11 @@ public static class AccountingModule
 
     public static IServiceCollection AddAccountingModule(this IServiceCollection services, IConfiguration configuration)
     {
-        _ = configuration;
         services.AddControllers().AddApplicationPart(typeof(AccountingModule).Assembly);
         services.AddModuleDbContext<AccountingDbContext>(configuration, AccountingDbContext.Schema);
         services.AddScoped<IAccountingPostingService, AccountingPostingService>();
+        services.AddScoped<AccountService>();
+        services.AddValidatorsFromAssemblyContaining<SaveAccountRequestValidator>();
         services.AddSingleton<IPermissionProvider, AccountingPermissionProvider>();
         return services;
     }
@@ -32,6 +35,9 @@ public static class AccountingModule
 public static class AccountingPermissions
 {
     public const string AccountsRead = "accounting.accounts.read";
+    public const string AccountsWrite = "accounting.accounts.write";
+
+    // Compatibilidad con el catálogo anterior; los endpoints ACC-01 solo autorizan AccountsWrite.
     public const string AccountsManage = "accounting.accounts.manage";
     public const string EntriesRead = "accounting.entries.read";
     public const string EntriesPost = "accounting.entries.post";
@@ -44,6 +50,7 @@ public sealed class AccountingPermissionProvider : IPermissionProvider
     public IEnumerable<PermissionDefinition> GetPermissions() =>
     [
         new(AccountingPermissions.AccountsRead, AccountingModule.Module, "Consultar plan de cuentas"),
+        new(AccountingPermissions.AccountsWrite, AccountingModule.Module, "Crear, editar y desactivar cuentas contables"),
         new(AccountingPermissions.AccountsManage, AccountingModule.Module, "Administrar plan de cuentas"),
         new(AccountingPermissions.EntriesRead, AccountingModule.Module, "Consultar asientos y libros"),
         new(AccountingPermissions.EntriesPost, AccountingModule.Module, "Contabilizar asientos"),

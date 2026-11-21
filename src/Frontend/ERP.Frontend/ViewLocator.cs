@@ -1,5 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Controls.Templates;
+using ERP.Frontend.Modules.Accounting.ViewModels;
+using ERP.Frontend.Modules.Accounting.Views;
 using ERP.Frontend.Modules.Inventory.ViewModels;
 using ERP.Frontend.Modules.Inventory.Views;
 using ERP.Frontend.Modules.Platform.ViewModels;
@@ -28,6 +30,9 @@ public sealed class ViewLocator : IDataTemplate
         [typeof(BranchesViewModel)] = () => new BranchesView(),
         [typeof(ComponentGalleryViewModel)] = () => new ComponentGalleryView(),
         [typeof(ModulePlaceholderViewModel)] = () => new ModulePlaceholderView(),
+
+        // Contabilidad (Romero)
+        [typeof(AccountsViewModel)] = () => new AccountsView(),
 
         // Inventario (Mendoza)
         [typeof(UnitsViewModel)] = () => new UnitsView(),

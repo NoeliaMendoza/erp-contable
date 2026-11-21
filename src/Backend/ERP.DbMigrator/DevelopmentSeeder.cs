@@ -101,6 +101,7 @@ public sealed class DevelopmentSeeder(DatabaseMigrator migrator, string? demoPas
     internal static readonly string[] ReadOnlyPermissionCodes =
     [
         .. PlatformPermissions.ReadOnly,
+        AccountingPermissions.AccountsRead,
         InventoryPermissions.UnitsRead,
         InventoryPermissions.ProductsRead,
         InventoryPermissions.CategoriesRead,

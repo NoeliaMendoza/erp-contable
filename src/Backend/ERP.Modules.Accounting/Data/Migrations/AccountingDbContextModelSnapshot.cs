@@ -23,6 +23,96 @@ namespace ERP.Modules.Accounting.Data.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("ERP.Modules.Accounting.Models.Account", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<bool>("AllowsPosting")
+                        .HasColumnType("boolean")
+                        .HasColumnName("allows_posting");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("code");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("kind");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)")
+                        .HasColumnName("name");
+
+                    b.Property<string>("NormalBalance")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("normal_balance");
+
+                    b.Property<Guid?>("ParentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("parent_id");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTimeOffset?>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at_utc");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_accounts");
+
+                    b.HasAlternateKey("TenantId", "Id")
+                        .HasName("ak_accounts_tenant_id_id");
+
+                    b.HasIndex("TenantId", "Code")
+                        .IsUnique()
+                        .HasDatabaseName("ix_accounts_tenant_id_code");
+
+                    b.HasIndex("TenantId", "ParentId")
+                        .HasDatabaseName("ix_accounts_tenant_id_parent_id");
+
+                    b.ToTable("accounts", "accounting", t =>
+                        {
+                            t.HasCheckConstraint("ck_accounts_code", "code ~ '^[A-Z0-9._-]{1,40}$'");
+
+                            t.HasCheckConstraint("ck_accounts_kind", "kind IN ('Asset', 'Liability', 'Equity', 'Income', 'Expense')");
+
+                            t.HasCheckConstraint("ck_accounts_name", "length(btrim(name)) BETWEEN 1 AND 160");
+
+                            t.HasCheckConstraint("ck_accounts_normal_balance", "normal_balance IN ('Debit', 'Credit')");
+
+                            t.HasCheckConstraint("ck_accounts_not_own_parent", "parent_id IS NULL OR parent_id <> id");
+                        });
+                });
+
             modelBuilder.Entity("ERP.Modules.Accounting.Models.JournalEntryEntity", b =>
                 {
                     b.Property<Guid>("Id")
@@ -127,6 +217,16 @@ namespace ERP.Modules.Accounting.Data.Migrations
                         .HasDatabaseName("ix_journal_entry_lines_tenant_id_journal_entry_id");
 
                     b.ToTable("journal_entry_lines", "accounting");
+                });
+
+            modelBuilder.Entity("ERP.Modules.Accounting.Models.Account", b =>
+                {
+                    b.HasOne("ERP.Modules.Accounting.Models.Account", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "ParentId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_accounts_accounts_tenant_id_parent_id");
                 });
 
             modelBuilder.Entity("ERP.Modules.Accounting.Models.JournalEntryLineEntity", b =>

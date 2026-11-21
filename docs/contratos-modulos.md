@@ -27,11 +27,320 @@ Reglas:
 - Un módulo nuevo **no** necesita tocar nada de esto: usa `ErpApiClient.GetAsync<T>` / `SendJsonAsync<T>`, que ya
   adjuntan token y empresa.
 
-## Accounting.Contracts — `IAccountingPostingService` (implementación pendiente, Integrante 2)
-- `PostAsync(PostingRequest)`: idempotente por `IdempotencyKey` (`"<modulo>:<tipo>:<id>"`), valida partida doble, período abierto y cuentas del tenant; devuelve el asiento existente si la clave ya se procesó.
-- `ReverseAsync(...)`: reverso auditable; nunca se borra un asiento contabilizado.
-- Las cuentas se referencian por **código** del plan del tenant; la tabla de mapeo (p. ej. "cuenta de IVA ventas") la define Contabilidad con Ventas/Compras (ACC-06).
-- Transacción: se ejecuta dentro de la transacción del caso de uso llamador (misma base). Si en el futuro se separan bases → documentar outbox.
+## Plan de cuentas (ACC-01, Romero)
+
+El CRUD de `/api/v1/accounts` usa los permisos `accounting.accounts.read` y `accounting.accounts.write`.
+Empresa y auditoría se obtienen del servidor. El código es texto normalizado y único por empresa,
+incluso si la cuenta está inactiva; el padre pertenece a la misma empresa y no puede crear ciclos.
+La desactivación conserva las relaciones y no desactiva hijos en cascada.
+DTO, errores, migración y demostración: [modulos/contabilidad.md](modulos/contabilidad.md).
+Este mantenimiento no implementa todavía el servicio de contabilización del siguiente apartado.
+
+## Accounting.Contracts — ACUERDO-02 (#12)
+
+**Estado: base v1 aprobada por Noe e integrada en el PR #25; ampliación de IVA propuesta para revisión.**
+Las firmas públicas existentes se conservan. La aprobación del acuerdo exige revisión del productor
+y de los consumidores; esta definición no declara implementado `IAccountingPostingService` ni completa ACC-03 (#17).
+El estado de cada decisión y la revisión requerida por Noe, Compras y Ventas constan en [modulos/acuerdo02-propuesta.md](modulos/acuerdo02-propuesta.md).
+
+### Entrada y resultado
+
+Los módulos llaman a `IAccountingPostingService.PostAsync(PostingRequest, CancellationToken)`
+dentro del servidor. No escriben directamente en tablas contables ni agregan un endpoint público de contabilización.
+
+| Dato | Contrato |
+|---|---|
+| Empresa | `ITenantContext.RequireTenantId()` de la solicitud autenticada y autorizada; no se añade un TenantId editable al DTO |
+| `IdempotencyKey` | Texto estable de la operación, generado a partir del módulo, tipo e ID persistente del documento |
+| `SourceModule` | `purchases` o `sales` en este incremento; debe corresponder al módulo que confirma el documento |
+| `SourceDocumentType` | `receipt` para la compra recibida; `invoice` para la venta del ejemplo |
+| `SourceDocumentId` | UUID no vacío del documento de la empresa activa; el módulo propietario verifica su pertenencia |
+| `AccountingDate` | `DateOnly` de la operación en Ecuador; no se sustituye por la fecha UTC del servidor |
+| `Description` | Descripción no vacía; sin credenciales ni datos personales innecesarios |
+| `Lines` | Al menos dos `PostingLine(AccountCode, Debit, Credit, Memo)`; Memo es opcional |
+
+La empresa y el usuario de auditoría se obtienen del contexto confiable. Cada cuenta se resuelve por **código**
+normalizado dentro de esa empresa y debe existir, estar activa y permitir movimientos. Una cuenta ajena,
+inexistente, inactiva o no apta se rechaza sin revelar datos de otra empresa.
+
+Cada línea usa `decimal` en USD, con debe XOR haber positivo, sin negativos y como máximo dos decimales.
+La propuesta conserva la escala provisional existente de `AccountingMoney` (D-05); el servicio no redondea
+ni agrega diferencias para cuadrar. El módulo origen debe enviar importes finales ya calculados.
+La suma del debe debe ser exactamente igual a la del haber y mayor que cero. D-05 no se considera cerrada
+para impuestos, descuentos, moneda extranjera ni reglas de redondeo adicionales.
+
+El resultado es `PostingResult(JournalEntryId, AlreadyProcessed)`:
+
+- Primera solicitud: ID del asiento persistido, `AlreadyProcessed = false`.
+- Reintento idéntico: mismo ID, `AlreadyProcessed = true`; no se crean más asientos ni líneas.
+- El resultado no equivale al commit del caso de uso: solo se comunica éxito al cliente después del commit global.
+
+### Cuentas y responsabilidad de cada operación
+
+| Operación | Quién solicita | Debe | Haber | Importe didáctico |
+|---|---|---|---|---|
+| Compra recibida al contado | Compras | Inventario | Caja | 30 |
+| Ingreso de venta al contado | Ventas | Caja | Ventas | 20 |
+| Costo de los productos vendidos | Ventas, con costo calculado por Inventario | Costo de ventas | Inventario | 12 |
+
+**Propuesta concreta para revisar:** en el ejemplo sin IVA, una compra genera un asiento de dos líneas;
+una venta de productos genera un solo asiento de cuatro líneas que incluye ingreso y costo.
+Cuando corresponda IVA se agregan sus líneas dentro del mismo asiento, según el apartado siguiente.
+Así la venta tiene una única clave
+contable; no se confirma el ingreso dejando pendiente otro envío para su costo. Una venta exclusivamente
+de servicios lleva solo las líneas de ingreso, sin movimiento ni costo de mercancía.
+
+Inventario entrega el costo mediante `InventoryMovementResult.TotalCost`; Ventas no lo reemplaza por el precio
+de venta ni lo recalcula leyendo tablas ajenas. Esta dependencia aún requiere implementar/acordar INV-03 y ACUERDO-01.
+
+Cada empresa debe tener identificados los códigos de Caja, Inventario, Ventas y Costo de ventas antes de confirmar,
+y los de IVA compras recuperable e IVA ventas por pagar cuando la operación los requiera.
+Los códigos de los ejemplos siguientes son ficticios y no constituyen un plan obligatorio para todas las empresas.
+La interfaz/tabla de configuración completa de mapeos (ACC-06) queda fuera de este acuerdo;
+la función de las cuentas de IVA sí se define aquí, sin imponer códigos universales.
+Si falta una cuenta configurada, la operación se rechaza; no se crean cuentas ni se escogen otras automáticamente.
+
+Ejemplos compilables de las solicitudes; definen datos, **no ejecutan el servicio todavía pendiente**:
+
+```csharp
+using ERP.Modules.Accounting.Contracts;
+
+var purchaseId = Guid.Parse("0195a000-0000-7000-8000-000000000030");
+var saleId = Guid.Parse("0195a000-0000-7000-8000-000000000020");
+var date = new DateOnly(2026, 11, 20);
+
+var purchase = new PostingRequest(
+    IdempotencyKey: $"purchases:receipt:{purchaseId:D}",
+    SourceModule: "purchases",
+    SourceDocumentType: "receipt",
+    SourceDocumentId: purchaseId,
+    AccountingDate: date,
+    Description: "Compra al contado: 10 cuadernos a USD 3",
+    Lines:
+    [
+        new PostingLine("1.1.02", 30m, 0m, "Inventario"),
+        new PostingLine("1.1.01", 0m, 30m, "Caja"),
+    ]);
+
+var sale = new PostingRequest(
+    IdempotencyKey: $"sales:invoice:{saleId:D}",
+    SourceModule: "sales",
+    SourceDocumentType: "invoice",
+    SourceDocumentId: saleId,
+    AccountingDate: date,
+    Description: "Venta al contado: 4 cuadernos a USD 5; costo total USD 12",
+    Lines:
+    [
+        new PostingLine("1.1.01", 20m, 0m, "Caja"),
+        new PostingLine("4.1.01", 0m, 20m, "Ventas"),
+        new PostingLine("5.1.01", 12m, 0m, "Costo de ventas"),
+        new PostingLine("1.1.02", 0m, 12m, "Inventario"),
+    ]);
+```
+
+En la compra: debe = haber = 30. En la venta completa: debe = haber = 32 (ingreso 20 y costo 12).
+El documento vendido conserva su importe de 20; 32 es la suma contable de las cuatro líneas.
+Este ejemplo excluye impuestos, descuentos y crédito; no es configuración fiscal de producción.
+
+### IVA de compras y ventas
+
+Ampliación solicitada por Noe para ACUERDO-02. Define el tratamiento de una operación al contado con IVA;
+no implementa todavía el cálculo comercial, un catálogo oficial, declaraciones, retenciones ni el servicio contable.
+
+**Responsabilidades y datos fiscales.** Compras/Ventas calculan y validan el impuesto del documento antes de
+solicitar el asiento. Usan el tratamiento del artículo (`VatTreatment`) y el código SRI aplicable, resuelto en
+`TaxRateCatalog.Resolve(TaxKind.Iva, sriCode, taxDate)`. `taxDate` es la fecha del hecho generador tributario
+que conserva el documento; no se sustituye automáticamente por `AccountingDate`, la hora del servidor o la fecha del reintento.
+El enum no es un porcentaje ni un código SRI: su correspondencia debe estar configurada y verificada.
+
+`Standard`, `ZeroRated`, `Exempt` y `NotSubject` son tratamientos distintos. Cero, exento y no objeto no se
+convierten entre sí porque su importe de impuesto sea cero. Debe conservarse la clasificación del documento.
+Para una tarifa aplicable se conserva un snapshot de código, porcentaje, base, impuesto, fecha tributaria,
+versión/fuente del catálogo y tratamiento. La elegibilidad del IVA de compra como recuperable también se conserva.
+Esos datos son responsabilidad del documento origen; `PostingRequest` sigue enviando códigos de cuenta e importes finales.
+El enlace módulo/tipo/ID permite auditar desde el asiento al desglose fiscal del documento, sin leer tablas de otro módulo.
+
+**Tarifas y verificación.** No fijar un porcentaje general en Contabilidad, Ventas, Compras ni en el producto.
+El catálogo debe aportar vigencia y fuente oficial. Una tarifa ausente produce `tax_rate_not_found`;
+un mapeo fiscal ausente o una tarifa no verificada bloquean la confirmación real, sin asumir cero.
+`Resolve` comprueba existencia/vigencia, pero **no comprueba por sí mismo `VerificationStatus.Verificado`**;
+esa comprobación corresponde al módulo origen. Los catálogos `Sintetico` sirven únicamente para pruebas aisladas.
+`ITaxRateCatalogProvider` todavía no tiene implementación y no hay un catálogo oficial cargado en este repositorio;
+esta definición no presenta esa dependencia como resuelta.
+
+**Base y redondeo propuestos para el ejemplo.** Los precios de 3 y 5 son valores antes de IVA. Compras/Ventas
+deben distinguir expresamente si sus precios incluyen el impuesto; no se aplica IVA otra vez sobre un total bruto.
+Para el recorrido inicial se propone base por línea e IVA por línea a dos decimales con `decimal` y
+`MidpointRounding.AwayFromZero`, sumando después los importes ya redondeados. D-05 y la compatibilidad de ese
+cálculo con los documentos/comprobantes del equipo quedan sujetos a revisión; no se declara una regla universal del SRI.
+Contabilidad recibe esos importes finales: no recalcula IVA ni inserta una diferencia para forzar el balance.
+Si el desglose no coincide con los totales del documento, el módulo origen rechaza la confirmación.
+
+**Cuentas por empresa.** Además de las cuatro cuentas base, identificar las siguientes cuando correspondan:
+
+| Función | Tipo del plan y naturaleza del ejemplo | Uso |
+|---|---|---|
+| IVA compras recuperable | Activo, deudora | Debe por el IVA de adquisición que sí corresponda reconocer como recuperable |
+| IVA ventas por pagar | Pasivo, acreedora | Haber por el IVA cobrado en la venta |
+
+No se crea una cuenta automáticamente ni se reutiliza una cuenta de otra empresa. Los códigos ficticios del
+ejemplo con IVA son `1.1.03` y `2.1.01`; cada empresa debe mapear sus códigos reales y permitir movimientos.
+La configuración de mapeos se debe coordinar con el equipo aunque su pantalla/tabla completa corresponda a ACC-06.
+
+**Compra con IVA recuperable.** Sea `IP` el IVA de la compra calculado por el módulo origen.
+Si corresponde recuperar todo ese IVA, el asiento es:
+
+| Cuenta | Debe | Haber |
+|---|---|---|
+| Inventario | 30 | 0 |
+| IVA compras recuperable | IP | 0 |
+| Caja | 0 | 30 + IP |
+
+El IVA recuperable no se suma al costo del inventario. **No se presume que toda compra da derecho a crédito.**
+Compras debe determinarlo según el documento y las reglas aplicables a la empresa. Si el IVA no es recuperable,
+su destino como costo o gasto debe estar definido con Contabilidad e Inventario antes de confirmar; no se envía
+a la cuenta de crédito tributario. El recorrido inicial no resuelve crédito parcial/proporcional ni permite confirmar
+cuando ese tratamiento esté pendiente. La valoración del inventario debe ser coherente con cualquier IVA llevado al costo.
+
+**Venta con IVA.** Sea `IV` el impuesto de la venta. Para productos, ingreso, IVA y costo se envían juntos:
+
+| Cuenta | Debe | Haber |
+|---|---|---|
+| Caja | 20 + IV | 0 |
+| Ventas | 0 | 20 |
+| IVA ventas por pagar | 0 | IV |
+| Costo de ventas | 12 | 0 |
+| Inventario | 0 | 12 |
+
+El impuesto cobrado se distingue del ingreso por ventas. El costo de salida es el valor ya determinado por
+Inventario; no se calcula nuevamente IVA sobre ese asiento de costo. Una venta de servicios conserva las
+líneas de Caja, Ventas e IVA cuando aplique, sin salida/costo de mercancía.
+Cuando el impuesto sea cero se omite su línea contable, porque `PostingLine` no admite debe/haber ambos cero;
+la clasificación fiscal cero/exento/no objeto permanece en el documento origen.
+
+**Ejemplo numérico de prueba, no tarifa vigente:** con un catálogo sintético del 10%, la compra da IP = 3,
+total 33 y debe/haber 33. La venta da IV = 2, cobro 22 y debe/haber del asiento completo 34 (22 + costo 12).
+El porcentaje no es una recomendación fiscal: solo demuestra el balance. El siguiente helper de documentación
+genera esos datos con la tarifa que reciba; no invoca el servicio ni valida la elegibilidad de un contribuyente.
+Su escenario presupone IVA de compra totalmente recuperable y precios antes de IVA:
+
+```csharp
+using ERP.Modules.Accounting.Contracts;
+using ERP.Tributario.Tax;
+
+static (PostingRequest Purchase, PostingRequest Sale) CreateVatExample(
+    TaxRateCatalog catalog, string sriCode, DateOnly taxDate, Guid purchaseId, Guid saleId)
+{
+    var rate = catalog.Resolve(TaxKind.Iva, sriCode, taxDate);
+    var purchaseVat = decimal.Round(30m * rate.Percentage / 100m, 2, MidpointRounding.AwayFromZero);
+    var saleVat = decimal.Round(20m * rate.Percentage / 100m, 2, MidpointRounding.AwayFromZero);
+    var purchaseLines = new List<PostingLine> { new("1.1.02", 30m, 0m, "Inventario") };
+    if (purchaseVat > 0m)
+    {
+        purchaseLines.Add(new("1.1.03", purchaseVat, 0m, "IVA compras recuperable"));
+    }
+
+    purchaseLines.Add(new("1.1.01", 0m, 30m + purchaseVat, "Caja"));
+    var saleLines = new List<PostingLine>
+    {
+        new("1.1.01", 20m + saleVat, 0m, "Caja"),
+        new("4.1.01", 0m, 20m, "Ventas"),
+    };
+    if (saleVat > 0m)
+    {
+        saleLines.Add(new("2.1.01", 0m, saleVat, "IVA ventas por pagar"));
+    }
+
+    saleLines.Add(new("5.1.01", 12m, 0m, "Costo de ventas"));
+    saleLines.Add(new("1.1.02", 0m, 12m, "Inventario"));
+    var purchase = new PostingRequest($"purchases:receipt:{purchaseId:D}", "purchases", "receipt",
+        purchaseId, taxDate, "Compra de prueba con IVA recuperable", purchaseLines);
+    var sale = new PostingRequest($"sales:invoice:{saleId:D}", "sales", "invoice",
+        saleId, taxDate, "Venta de prueba con IVA e inventario", saleLines);
+    return (purchase, sale);
+}
+```
+
+El helper iguala fecha tributaria y contable únicamente para este ejemplo. El módulo real debe conservar ambas
+si difieren y comprobar que la tarifa sea oficial/verificada antes de confirmar o emitir; el helper acepta catálogos
+sintéticos porque es un ejemplo aislado, no una ruta de producción. Para documentos con distintas tarifas,
+se conserva el desglose fiscal por línea/grupo en el origen, sin aplicar una única tarifa a toda la factura.
+
+El IVA forma parte del contenido protegido por la misma clave de idempotencia. Un reintento usa el snapshot
+original y las mismas líneas; no vuelve a resolver otra tarifa con la fecha actual. Misma clave con IVA o total
+distinto es conflicto, no otro asiento. Si falta tarifa, cuenta o tratamiento de recuperabilidad, la operación completa
+debe fallar dentro del flujo de documento/stock/asiento ya descrito, sin éxito parcial.
+
+**Fuente y alcance:** [SRI: Impuesto al Valor Agregado](https://www.sri.gob.ec/impuesto-al-valor-agregado-iva),
+consultado para esta ampliación el 20/11/2026. La fuente describe base, tratamientos y crédito sujeto a condiciones;
+no se carga de ella una tarifa fija ni se sustituye la verificación de la normativa aplicable a cada fecha/documento.
+Retenciones, notas de crédito, declaraciones y crédito proporcional requieren sus propios acuerdos y no se habilitan aquí.
+La separación del impuesto recuperable del costo de inventario del ejemplo también sigue la referencia de
+[IAS 2, párrafo 11 (IFRS Foundation, edición 2021)](https://www.ifrs.org/content/dam/ifrs/publications/pdf-standards/english/2021/issued/part-a/ias-2-inventories.pdf),
+que excluye del costo de compra los impuestos recuperables. Esta referencia contable no determina por sí sola
+si una empresa tiene derecho al crédito tributario en Ecuador.
+
+### Idempotencia y solicitudes simultáneas
+
+- Clave canónica del ejemplo: `<modulo>:<tipo>:<uuid-en-formato-D>`, conservada en todos los reintentos.
+  El emisor no genera otro UUID ni clave por intento y no reutiliza la clave para una corrección.
+- La unicidad se aplica a `(tenant_id, idempotency_key)`, no globalmente. La misma clave en otra empresa
+  es independiente; ninguna consulta de reintento debe saltarse el tenant.
+- Propuesta para contenido repetido: comparar módulo, tipo, ID, fecha, descripción y todas las líneas,
+  incluidos importes, Memo y orden, tras recortar textos y normalizar códigos de cuenta según ACC-01.
+  El emisor debe conservar ese orden. Misma clave con datos distintos -> conflicto 409, sin sobrescribir.
+- Buscar primero un asiento ya confirmado: si el reintento coincide, devolverlo aunque después se haya cerrado
+  el período o desactivado una cuenta. Eso no autoriza un asiento nuevo con esas condiciones.
+- La implementación de ACC-03 debe resolver dos peticiones simultáneas con restricción única en PostgreSQL.
+  Un `AnyAsync` previo no garantiza idempotencia. Una colisión no puede dejar una transacción abortada
+  y luego intentar continuar con consultas sin rollback/savepoint válido.
+
+### Fallos y transacción del documento completo
+
+| Situación | Resultado del contrato propuesto |
+|---|---|
+| Descripción vacía | `DomainException`, `journal_description_required`, 422 |
+| Líneas insuficientes o importes inválidos | `journal_min_lines`, `journal_line_negative`, `journal_line_side` o `journal_line_scale`, 422 |
+| Asiento desbalanceado | `DomainException`, `journal_unbalanced`, 422 |
+| Cuenta no disponible para esa empresa | `DomainException`, `posting_account_not_available`, 422; nuevo código propuesto |
+| Origen o clave no válidos | `DomainException`, `posting_source_invalid`, 422; nuevo código propuesto |
+| Período cerrado | `DomainException`, `period_closed`, 422 |
+| Misma clave con contenido distinto | `ConflictException`, `posting_idempotency_conflict`, 409; nuevo código propuesto |
+| Cancelación, desconexión o fallo de base | No devolver un resultado de éxito; revertir la operación o consultar/reintentar con su misma identidad si el resultado quedó incierto |
+
+Los códigos `journal_*` y `period_closed` ya existen en el dominio; los nuevos se implementarán en ACC-03.
+Las excepciones internas no son respuestas HTTP: el host las transforma a `ProblemDetails` con `code` y `traceId`
+usando el manejador común. Se mantienen 400/401/403 para empresa ausente, autenticación y autorización según
+los contratos existentes. No se convierte cualquier error de infraestructura en un rechazo de negocio 422.
+
+El caso de uso de Compras/Ventas controla el commit. Documento, movimiento de stock y asiento deben
+guardarse en **una misma conexión y transacción PostgreSQL**, manteniendo la empresa durante toda la operación.
+Los servicios participantes no hacen commits propios ni cambian el tenant. Ante una excepción se revierte todo;
+la interfaz no confirma una venta o recepción parcialmente guardada.
+
+**Brecha actual comprobada:** `AddModuleDbContext` registra contextos con conexiones independientes;
+`InTenantTransactionAsync` solo reutiliza `CurrentTransaction` del contexto recibido. Llamar sucesivamente a ambos
+servicios no implementa por sí solo la transacción compartida. Antes de habilitar la confirmación integrada,
+el responsable de integración debe coordinar una conexión/transacción por caso de uso y enlistar los contextos,
+por ejemplo mediante `UseTransactionAsync`. Los contratos siguen sin depender de EF, Npgsql ni ASP.NET.
+Referencia: [transacciones entre contextos en EF Core](https://learn.microsoft.com/en-us/ef/core/saving/transactions#cross-context-transaction).
+
+La política y el mecanismo para saber si un período está abierto todavía requieren acuerdo e implementación;
+no se presume abierto por ausencia de catálogo. La llamada al SRI es externa y se recupera por estados,
+no dentro de la transacción PostgreSQL. Si se separan bases en el futuro, se requiere otro acuerdo sobre outbox/consistencia.
+
+### Reversos y aceptación
+
+`ReverseAsync(...)` conserva su firma: debe generar otro asiento auditable y enlazado al original,
+nunca borrarlo ni modificar sus líneas. Fecha, motivo, permiso y período deben validarse.
+No se habilita esa operación hasta acordar la corrección del documento y sus efectos sobre inventario;
+un reverso contable por sí solo no anula una venta ni devuelve stock.
+
+Antes de aceptar #12, productor y consumidores revisan la agrupación de venta/costo/IVA, códigos por empresa,
+tarifas y crédito recuperable, política monetaria inicial, transacción compartida, períodos y errores. Después de integrar el acuerdo y la primera
+entrega completa, ACC-03 deberá probar: ejemplo 30/20/12, reintento idéntico y distinto, concurrencia,
+aislamiento entre empresas, IVA positivo/cero, vigencias y falta de configuración fiscal, y rollback de documento/stock/asiento. Aquí se define ese comportamiento;
+no se presenta como implementado ni probado todavía.
 
 ## Inventory.Contracts (Mendoza)
 - `IProductCatalog.GetByIdsAsync`: **implementado** (INV-01). Solo artículos de la empresa activa; incluye `VatTreatment` (Ventas resuelve el código SRI y el porcentaje vigente con `TaxRateCatalog`), `TracksInventory` y `Barcode`; detalle en [modulos/inventario.md](modulos/inventario.md).
@@ -59,6 +368,7 @@ Todo módulo nuevo sigue este patrón (implementado primero en Inventario):
 | Método | Ruta | Permiso |
 |---|---|---|
 | GET | `/api/v1/me` | autenticado |
+| GET/POST/PUT/PATCH | `/api/v1/accounts` · `/{id}` · `/{id}/status` | `accounting.accounts.read` / `.write` |
 | GET | `/api/v1/tenant/current` | `platform.tenant.read` |
 | GET | `/api/v1/tenant/branches` · `/{id}` | `platform.branches.read` |
 | POST | `/api/v1/tenant/branches` | `platform.branches.manage` |

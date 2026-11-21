@@ -1,0 +1,135 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:ERP.Frontend.Modules.Accounting.ViewModels"
+             xmlns:acc="using:ERP.Frontend.Modules.Accounting"
+             xmlns:controls="using:ERP.Frontend.Shared.Controls"
+             x:Class="ERP.Frontend.Modules.Accounting.Views.AccountsView"
+             x:DataType="vm:AccountsViewModel">
+  <StackPanel Spacing="16" IsEnabled="{Binding !IsBusy}">
+    <DockPanel>
+      <Button DockPanel.Dock="Right" Content="Actualizar" Command="{Binding LoadCommand}" />
+      <TextBlock Classes="h1" Text="Plan de cuentas" />
+    </DockPanel>
+    <controls:FeedbackBar IsBusy="{Binding IsBusy}" ErrorMessage="{Binding ErrorMessage}"
+                          SuccessMessage="{Binding SuccessMessage}" RetryCommand="{Binding LoadCommand}" />
+
+    <Border Classes="card" IsVisible="{Binding CanWrite}">
+      <StackPanel Spacing="8">
+        <DockPanel>
+          <Button DockPanel.Dock="Right" Content="Limpiar" Command="{Binding NewAccountCommand}" />
+          <TextBlock Classes="h2" Text="{Binding FormTitle}" />
+        </DockPanel>
+        <Grid ColumnDefinitions="200,*" ColumnSpacing="8">
+          <controls:FormField Label="Código" ErrorMessage="{Binding CodeError}">
+            <controls:FormField.FieldContent>
+              <TextBox Text="{Binding Code}" MaxLength="40" PlaceholderText="01.01.001" AutomationProperties.Name="Código de cuenta" />
+            </controls:FormField.FieldContent>
+          </controls:FormField>
+          <controls:FormField Grid.Column="1" Label="Nombre" ErrorMessage="{Binding NameError}">
+            <controls:FormField.FieldContent>
+              <TextBox Text="{Binding Name}" MaxLength="160" PlaceholderText="Caja" AutomationProperties.Name="Nombre de cuenta" />
+            </controls:FormField.FieldContent>
+          </controls:FormField>
+        </Grid>
+        <Grid ColumnDefinitions="*,*,*" ColumnSpacing="8">
+          <controls:FormField Label="Tipo" ErrorMessage="{Binding KindError}">
+            <controls:FormField.FieldContent>
+              <ComboBox ItemsSource="{Binding Kinds}" SelectedItem="{Binding FormKind}" HorizontalAlignment="Stretch"
+                        AutomationProperties.Name="Tipo de cuenta">
+                <ComboBox.ItemTemplate>
+                  <DataTemplate x:DataType="acc:AccountOption"><TextBlock Text="{Binding Label}" /></DataTemplate>
+                </ComboBox.ItemTemplate>
+              </ComboBox>
+            </controls:FormField.FieldContent>
+          </controls:FormField>
+          <controls:FormField Grid.Column="1" Label="Naturaleza" ErrorMessage="{Binding NormalBalanceError}">
+            <controls:FormField.FieldContent>
+              <ComboBox ItemsSource="{Binding Balances}" SelectedItem="{Binding FormBalance}" HorizontalAlignment="Stretch"
+                        AutomationProperties.Name="Naturaleza de cuenta">
+                <ComboBox.ItemTemplate>
+                  <DataTemplate x:DataType="acc:AccountOption"><TextBlock Text="{Binding Label}" /></DataTemplate>
+                </ComboBox.ItemTemplate>
+              </ComboBox>
+            </controls:FormField.FieldContent>
+          </controls:FormField>
+          <controls:FormField Grid.Column="2" Label="Cuenta padre (opcional)" ErrorMessage="{Binding ParentIdError}">
+            <controls:FormField.FieldContent>
+              <ComboBox ItemsSource="{Binding Parents}" SelectedItem="{Binding FormParent}" HorizontalAlignment="Stretch"
+                        AutomationProperties.Name="Cuenta padre">
+                <ComboBox.ItemTemplate>
+                  <DataTemplate x:DataType="acc:ParentAccountOption"><TextBlock Text="{Binding Display}" TextTrimming="CharacterEllipsis" /></DataTemplate>
+                </ComboBox.ItemTemplate>
+              </ComboBox>
+            </controls:FormField.FieldContent>
+          </controls:FormField>
+        </Grid>
+        <DockPanel>
+          <Button DockPanel.Dock="Right" Classes="primary" Content="Guardar" Command="{Binding SaveCommand}" IsDefault="True" />
+          <CheckBox Content="Permite movimientos" IsChecked="{Binding AllowsPosting}" />
+        </DockPanel>
+        <TextBlock Classes="muted small" TextWrapping="Wrap"
+                   Text="El código es único por empresa. Desactivar una cuenta conserva sus hijos y su historial." />
+      </StackPanel>
+    </Border>
+
+    <controls:ConfirmationDialog IsVisible="{Binding PendingToggle, Converter={x:Static ObjectConverters.IsNotNull}}"
+                                 Title="Cambiar estado de cuenta"
+                                 Message="{Binding PendingToggle.Code, StringFormat='¿Cambiar el estado de la cuenta {0}? Se conservarán sus datos y relaciones.'}"
+                                 IsBusy="{Binding IsBusy}" ErrorMessage="{Binding ErrorMessage}"
+                                 ConfirmCommand="{Binding ConfirmToggleCommand}" CancelCommand="{Binding CancelToggleCommand}" />
+
+    <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+      <controls:SearchBox SearchText="{Binding Search, Mode=TwoWay}" PlaceholderText="Buscar por código o nombre"
+                          ClearCommand="{Binding ClearSearchCommand}" />
+      <CheckBox Grid.Column="1" Content="Incluir inactivas" IsChecked="{Binding IncludeInactive}" />
+      <Button Grid.Column="2" Content="Buscar" Command="{Binding SearchNowCommand}" />
+    </Grid>
+
+    <Border Classes="card">
+      <StackPanel Spacing="8">
+        <controls:EmptyState IsVisible="{Binding IsEmpty}" Title="No hay cuentas para mostrar"
+                             Message="Cambie la búsqueda o registre una cuenta. Por ejemplo, cree Activos y después Caja como cuenta hija." />
+        <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+          <StackPanel MinWidth="960" Spacing="4">
+            <Grid ColumnDefinitions="100,220,90,90,85,80,240" ColumnSpacing="8">
+              <TextBlock Classes="muted" Text="Código" />
+              <TextBlock Grid.Column="1" Classes="muted" Text="Nombre" />
+              <TextBlock Grid.Column="2" Classes="muted" Text="Tipo" />
+              <TextBlock Grid.Column="3" Classes="muted" Text="Naturaleza" />
+              <TextBlock Grid.Column="4" Classes="muted" Text="Movimiento" />
+              <TextBlock Grid.Column="5" Classes="muted" Text="Estado" />
+              <TextBlock Grid.Column="6" Classes="muted" Text="Acciones" />
+            </Grid>
+            <ItemsControl ItemsSource="{Binding Accounts}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="acc:AccountItem">
+                  <Grid ColumnDefinitions="100,220,90,90,85,80,240" ColumnSpacing="8" Margin="0,4">
+                    <TextBlock Text="{Binding Code}" VerticalAlignment="Center" TextWrapping="Wrap" />
+                    <TextBlock Grid.Column="1" Text="{Binding Name}" VerticalAlignment="Center" TextWrapping="Wrap" />
+                    <TextBlock Grid.Column="2" Text="{Binding KindLabel}" VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="3" Text="{Binding BalanceLabel}" VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="4" Text="{Binding PostingLabel}" VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="5" Classes="muted" Text="{Binding Status}" VerticalAlignment="Center" />
+                    <StackPanel Grid.Column="6" Orientation="Horizontal" Spacing="8"
+                                IsVisible="{Binding $parent[UserControl].((vm:AccountsViewModel)DataContext).CanWrite}">
+                      <Button Content="Editar" CommandParameter="{Binding}"
+                              Command="{Binding $parent[UserControl].((vm:AccountsViewModel)DataContext).EditCommand}" />
+                      <Button Content="Activar / desactivar" CommandParameter="{Binding}"
+                              Command="{Binding $parent[UserControl].((vm:AccountsViewModel)DataContext).AskToggleCommand}" />
+                    </StackPanel>
+                  </Grid>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </ScrollViewer>
+      </StackPanel>
+    </Border>
+    <DockPanel>
+      <TextBlock DockPanel.Dock="Left" Classes="muted" VerticalAlignment="Center" Text="{Binding TotalCount, StringFormat='Total: {0} cuenta(s)'}" />
+      <controls:PaginationBar CurrentPage="{Binding Page}" TotalPages="{Binding TotalPages}"
+                              CanGoPrevious="{Binding CanGoPrevious}" CanGoNext="{Binding CanGoNext}"
+                              PreviousCommand="{Binding PreviousPageCommand}" NextCommand="{Binding NextPageCommand}" />
+    </DockPanel>
+  </StackPanel>
+</UserControl>

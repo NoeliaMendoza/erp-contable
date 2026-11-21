@@ -32,7 +32,6 @@ public sealed class DatabaseMigrator(string migratorConnectionString)
 
         await using var sales = CreateSalesContext(TenantSession.ForSystem());
         await sales.Database.MigrateAsync(cancellationToken);
-
         await using var accounting = CreateAccountingContext(TenantSession.ForSystem());
         await accounting.Database.MigrateAsync(cancellationToken);
     }
