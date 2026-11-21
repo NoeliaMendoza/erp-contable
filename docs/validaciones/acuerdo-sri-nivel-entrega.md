@@ -1,7 +1,8 @@
 # ACUERDO-03 — nivel de facturación electrónica
 
-**Fecha:** 2026-11-20  
-**Participantes:** Reyes (seguridad/identidad) y Casas (ventas/comprobantes)  
+**Fecha:** 2026-11-20
+
+**Participantes:** Reyes (seguridad/identidad) y Casas (ventas/comprobantes)
 **Nivel acordado para esta entrega:** **Simulación local**
 
 La simulación identifica el recorrido completo del ERP, pero no representa un comprobante autorizado por el SRI.
