@@ -1,8 +1,8 @@
 
 using ERP.Modules.Purchases.Dtos;
 using ERP.Modules.Purchases.Models;
-using FluentValidation;
 using ERP.Tributario.Identification;
+using FluentValidation;
 
 namespace ERP.Modules.Purchases.Validators;
 
