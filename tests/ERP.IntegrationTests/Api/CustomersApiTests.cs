@@ -46,7 +46,7 @@ public sealed class CustomersApiTests(PostgresFixture db) : IAsyncLifetime
             new SaveCustomerRequest("Cedula", number, "Cliente actualizado", null, null, null), Ct);
         Assert.Equal(HttpStatusCode.OK, updated.StatusCode);
 
-        var status = await _ana.PatchAsJsonAsync($"/api/v1/customers/{customer.Id}",
+        var status = await _ana.PatchAsJsonAsync($"/api/v1/customers/{customer.Id}/status",
             new ChangeCustomerStatusRequest(false), Ct);
         Assert.Equal(HttpStatusCode.OK, status.StatusCode);
         Assert.False((await status.Content.ReadFromJsonAsync<CustomerResponse>(Ct))!.IsActive);
