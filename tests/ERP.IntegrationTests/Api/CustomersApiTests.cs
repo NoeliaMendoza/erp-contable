@@ -33,7 +33,7 @@ public sealed class CustomersApiTests(PostgresFixture db) : IAsyncLifetime
     [Fact]
     public async Task Cliente_se_crea_paginado_editado_y_desactivado()
     {
-        var number = Guid.NewGuid().ToString("N")[..10];
+        var number = Random.Shared.NextInt64(1_000_000_000, 10_000_000_000).ToString(CultureInfo.InvariantCulture);
         var created = await _ana.PostAsJsonAsync("/api/v1/customers",
             new SaveCustomerRequest("Cedula", number, "Cliente de prueba", "cliente@demo.local", "0991234567", "Quito"), Ct);
 
