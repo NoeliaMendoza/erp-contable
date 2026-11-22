@@ -3,8 +3,8 @@ using ERP.Infrastructure.Persistence;
 using ERP.Modules.Sales.Data;
 using ERP.Modules.Sales.Services;
 using ERP.Modules.Sales.Validators;
-using FluentValidation;
 using ERP.Tributario.Tax;
+using FluentValidation;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
