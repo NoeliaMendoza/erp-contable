@@ -9,7 +9,7 @@ Supuestos actuales son **explícitos y reversibles**. Cerrar cada decisión con 
 | D-03 | Autenticación definitiva | **Resuelta en PLAT-01** ([ADR-0004](adr/0004-oidc-identity-openiddict.md)): OIDC con Identity + OpenIddict. Pendiente: certificados de producción y persistencia opcional de la sesión | Despliegue requiere certificados `.pfx` | Int. 1 (PLAT-01) |
 | D-04 | Integración de ASP.NET Core Identity con `platform.users` | Tabla propia mínima | Migración de identidad | Int. 1 |
 | D-05 | Precisión, escala y redondeo monetario; moneda extranjera | USD, 2 decimales en asientos; sin moneda extranjera | Esquema contable | Int. 2 + contador |
-| D-06 | Política de inventario (FIFO/promedio), stock negativo, reservas | No definida | Contratos de Inventory | Int. 5 |
+| D-06 | Política de inventario (FIFO/promedio), stock negativo, reservas | **Propuesta en ACUERDO-01 (#11)**: costo promedio ponderado móvil por artículo y bodega, sin stock negativo, sin reservas en este incremento ([contratos-modulos.md](contratos-modulos.md#inventorycontracts--acuerdo-01-11)) | Contratos de Inventory | Int. 5 + Compras + Ventas |
 | D-07 | Primeras dos plantillas sectoriales | Comercio y servicios (no implementadas) | Semillas, features | Producto |
 | D-08 | Criterios de aprobación/reversión de operaciones | Permisos `*.reverse`, sin flujo de aprobación | Contabilidad, ventas | Producto + Int. 2 |
 | D-09 | Políticas de respaldo y retención | Ninguna automatizada | Operación | Líder |
