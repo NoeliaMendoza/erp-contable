@@ -33,19 +33,11 @@ public sealed class CustomerService(SalesDbContext db, ITenantContext tenant, Ti
             }
 
             var total = await query.CountAsync(ct);
-            var items = await query.OrderBy(c => c.Name).ThenBy(c => c.Id)
+            // Una sola consulta por página; la advertencia de identificación se calcula en memoria con ToResponse.
+            var customers = await query.OrderBy(c => c.Name).ThenBy(c => c.Id)
                 .Skip(page.Skip).Take(page.SafePageSize)
-                .Select(c => new CustomerResponse(
-                    c.Id, c.IdentificationType.ToString(), c.IdentificationNumber, c.Name,
-                    c.Email, c.Phone, c.Address, c.IsActive, null))
                 .ToListAsync(ct);
-            foreach (var item in items)
-            {
-                var customer = await db.Customers.AsNoTracking().SingleAsync(c => c.Id == item.Id, ct);
-                var warning = IdentificationWarning(customer);
-                var index = items.IndexOf(item);
-                items[index] = item with { IdentificationWarning = warning };
-            }
+            var items = customers.Select(ToResponse).ToList();
             return new PagedResult<CustomerResponse>(items, total, page.SafePage, page.SafePageSize);
         }, cancellationToken);
 
