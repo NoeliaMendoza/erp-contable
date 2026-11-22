@@ -393,63 +393,162 @@ Los identificadores ajenos responden `404`; sin sesión `401`; sin permiso o emp
 
 ## Inventory.Contracts (Mendoza)
 - `IProductCatalog.GetByIdsAsync`: **implementado** (INV-01). Solo artículos de la empresa activa; incluye `VatTreatment` (Ventas resuelve el código SRI y el porcentaje vigente con `TaxRateCatalog`), `TracksInventory` y `Barcode`; detalle en [modulos/inventario.md](modulos/inventario.md).
-- `IStockQueryService.GetStockAsync`: contrato implementado. Consulta solo por artículo y bodega de la empresa activa.
-- `IInventoryMovementService.RegisterAsync(InventoryMovementRequest)`: contrato implementado con idempotencia y política sin stock negativo.
+- `IStockQueryService.GetStockAsync` e `IInventoryMovementService.RegisterAsync`: reglas en ACUERDO-01 (#11), abajo.
+  Hay una **implementación inicial** integrada en el PR #30 (sin stock negativo e idempotente); INV-03 (#15) la completa
+  según el acuerdo. Las diferencias pendientes están en «Estado de la implementación».
 
-## ACUERDO-04 — movimientos de inventario entre Compras, Ventas e Inventario
+## Inventory.Contracts — ACUERDO-01 (#11)
 
-**Estado:** acordado y integrado por el contrato compartido. Mendoza implementa el servicio,
-Casas solicita salidas y Torres solicitará entradas.
+**Estado: propuesta de Mendoza para revisión de Compras (Torres) y Ventas (Casas).** Define cómo esos módulos
+piden una entrada o salida de stock. Reemplaza la sección «ACUERDO-04» que se integró en el PR #30: era el mismo
+tema con otro número; de ella se conservan la política sin stock negativo, la idempotencia, la consulta de existencias
+y el fallo completo. Los importes de costo que devuelve Inventario son los que usan los asientos de ACUERDO-02 (#12).
 
-### Solicitud
+### Quién pide qué
 
-Compras y Ventas llaman a `IInventoryMovementService.RegisterAsync(InventoryMovementRequest, CancellationToken)`.
-No consultan ni modifican tablas de Inventario directamente.
+| Operación | Quién llama | `Kind` | `SourceModule` / `SourceDocumentType` | Costo unitario |
+|---|---|---|---|---|
+| Recepción de compra al contado | Compras (PUR-02) | `Entrada` | `purchases` / `receipt` | Obligatorio: el costo de la compra, sin IVA |
+| Venta de productos | Ventas (SAL-02) | `Salida` | `sales` / `invoice` | `null`: lo calcula Inventario |
+| Ajuste y transferencia | Nadie en este incremento | `Ajuste`, `Transferencia` | — | Rechazados con `inventory_movement_kind_not_supported` |
 
-| Dato | Regla |
+**Servicios y artículos sin control de inventario no generan movimiento.** El módulo origen consulta
+`IProductCatalog.GetByIdsAsync` y solo envía las líneas con `TracksInventory = true`. Si ninguna línea controla
+inventario (por ejemplo, una venta solo de servicios), no llama a `RegisterAsync`. Si envía un artículo sin control,
+Inventario lo rechaza con `inventory_product_not_tracked`; no lo ignora en silencio.
+
+### Datos de la solicitud
+
+| Dato | Contrato |
 |---|---|
-| Empresa | `ITenantContext.RequireTenantId()`; nunca se acepta un tenant editable |
-| `IdempotencyKey` | Única por empresa y operación estable; repetirla devuelve el movimiento original |
-| `SourceModule` | `purchases` o `sales` |
-| `SourceDocumentType` | Tipo persistente del documento de origen |
-| `SourceDocumentId` | UUID del documento confirmado |
-| `WarehouseId` | Bodega de la empresa activa |
-| `Kind` | Entrada, salida, ajuste o transferencia |
-| `MovementDate` | Fecha del hecho generador, `DateOnly` |
-| `Lines` | Artículo, cantidad positiva con máximo 4 decimales y costo unitario opcional |
+| Empresa y usuario | `ITenantContext` de la solicitud autenticada; no hay `TenantId` en el DTO |
+| `IdempotencyKey` | `<modulo>:<tipo>:<uuid-en-formato-D>` del documento, igual que en ACUERDO-02; la misma en cada reintento |
+| `SourceDocumentId` | UUID del documento de la empresa activa; queda en el kardex para saber de dónde vino cada movimiento |
+| `WarehouseId` | Bodega de la empresa activa. Cada empresa tiene una **bodega principal**: INV-03 crea las bodegas y agrega `IStockQueryService.GetDefaultWarehouseAsync` para obtenerla. El documento guarda la bodega usada |
+| `MovementDate` | `DateOnly` de Ecuador del documento. Los movimientos se valoran **en el orden en que se registran**; no se recalcula la historia por fechas anteriores |
+| `Lines` | Al menos una; cada artículo **una sola vez** (el módulo origen agrupa). Cantidad > 0 con escala máxima 4 |
 
-El costo unitario se usa en entradas y movimientos que requieren valorización. Ventas conserva
-el costo referencial del artículo para trazabilidad del ejemplo; el costeo definitivo depende de INV-05.
+### Existencias y costo
 
-### Consulta
+- **Sin stock negativo.** Una salida mayor que la existencia se rechaza completa con `inventory_insufficient_stock`
+  (422); no se registra una parte. Decide D-06.
+- **Costo promedio ponderado móvil** por artículo y bodega. Una entrada recalcula el promedio:
+  `(existencia × promedio + cantidad × costo) / (existencia + cantidad)`. Una salida usa el promedio vigente y no lo cambia.
+  El costo unitario se guarda con escala 4.
+- `TotalCost` se devuelve en USD con **2 decimales** (redondeo `AwayFromZero`), que es la escala de los asientos
+  (D-05). Compras lo usa para el debe de Inventario y Ventas para el par Costo de ventas / Inventario.
+- **Concurrencia:** dos ventas simultáneas no pueden consumir la misma última unidad. INV-03 descuenta con una
+  actualización condicional o un bloqueo de la fila de existencias dentro de la transacción; una consulta previa
+  con `IStockQueryService` no garantiza el stock.
+- `IStockQueryService.GetStockAsync(productId, warehouseId)` solo informa la disponibilidad para mostrarla en pantalla.
+  Un saldo inexistente (`null`) se interpreta como 0 disponible; el disponible es `QuantityOnHand - QuantityReserved`,
+  y `QuantityReserved` es 0 porque no hay reservas. INV-03 agrega la consulta de varios artículos para la pantalla de venta.
 
-Compras y Ventas pueden usar `IStockQueryService.GetStockAsync(productId, warehouseId, cancellationToken)`
-para consultar disponibilidad. Un saldo inexistente se interpreta como cero disponible.
-El dato devuelto incluye existencia física y reservada; el disponible es física menos reservada.
+Ejemplo de la tarea, en una sola bodega: entrada de 10 cuadernos a USD 3 → existencia 10, promedio 3, `TotalCost` 30.
+Salida de 4 → existencia 6, promedio 3, `TotalCost` 12.
 
-### Stock negativo
+```csharp
+using ERP.Modules.Inventory.Contracts;
 
-La política acordada es **no permitir stock negativo**. Una salida rechaza la operación si la cantidad
-supera el disponible. El resultado HTTP de negocio usa `stock_insufficient` mediante `422 Unprocessable Entity`.
-Los servicios y artículos con `TracksInventory=false` se omiten sin crear movimiento ni línea.
+var receiptId = Guid.Parse("0195a000-0000-7000-8000-000000000030");
+var invoiceId = Guid.Parse("0195a000-0000-7000-8000-000000000020");
+var cuaderno = Guid.Parse("0195a000-0000-7000-8000-0000000000c1");
+var bodega = Guid.Parse("0195a000-0000-7000-8000-0000000000b1"); // GetDefaultWarehouseAsync()
+var date = new DateOnly(2026, 11, 20);
 
-### Idempotencia y concurrencia
+var entrada = new InventoryMovementRequest(
+    IdempotencyKey: $"purchases:receipt:{receiptId:D}",
+    SourceModule: "purchases",
+    SourceDocumentType: "receipt",
+    SourceDocumentId: receiptId,
+    WarehouseId: bodega,
+    Kind: InventoryMovementKind.Entrada,
+    MovementDate: date,
+    Lines: [new InventoryMovementLine(cuaderno, Quantity: 10m, UnitCost: 3m)]);   // TotalCost = 30
 
-La clave de idempotencia se persiste con el movimiento y es única por empresa.
-Una repetición devuelve `AlreadyProcessed=true` y el `MovementId` original, sin consumir stock otra vez.
+var salida = new InventoryMovementRequest(
+    IdempotencyKey: $"sales:invoice:{invoiceId:D}",
+    SourceModule: "sales",
+    SourceDocumentType: "invoice",
+    SourceDocumentId: invoiceId,
+    WarehouseId: bodega,
+    Kind: InventoryMovementKind.Salida,
+    MovementDate: date,
+    Lines: [new InventoryMovementLine(cuaderno, Quantity: 4m, UnitCost: null)]);  // TotalCost = 12
+```
 
-Las modificaciones de un mismo saldo deben ser controladas por transacción y bloqueo de concurrencia
-de base de datos. Dos confirmaciones simultáneas no pueden consumir ambas el último stock.
+### Idempotencia
 
-### Fallo completo
+Mismas reglas que ACUERDO-02, para que Compras y Ventas manejen un solo criterio:
 
-Una compra o venta no debe quedar confirmada a medias.
+- Unicidad por `(tenant_id, idempotency_key)`. La misma clave en otra empresa es independiente.
+- Reintento con el mismo contenido (módulo, tipo, documento, bodega, tipo de movimiento, fecha y líneas en el mismo orden):
+  mismo `MovementId`, `AlreadyProcessed = true` y el **`TotalCost` original**, aunque el promedio haya cambiado después.
+- Misma clave con contenido distinto: `ConflictException`, `inventory_idempotency_conflict`, 409, sin sobrescribir.
+- Dos solicitudes simultáneas con la misma clave se resuelven con la restricción única de PostgreSQL, no con una consulta previa.
 
-- Validación de catálogo/precio/stock falla antes de confirmar el documento.
-- El fallo de Inventario propaga la excepción y revierte el caso de uso origen.
-- El fallo contable propaga la excepción y revierte la operación origen. La integración final usa una
-  transacción compartida o, si las bases cambian, compensación/outbox acordada; no se acepta éxito parcial.
-- Una respuesta incierta debe reconciliarse antes de repetir; no se crea un segundo documento.
+### Errores
+
+| Situación | Código | HTTP |
+|---|---|---|
+| Sin líneas, artículo repetido, cantidad ≤ 0 o con más de 4 decimales | `inventory_lines_invalid`, `inventory_duplicate_product`, `inventory_quantity_invalid` | 422 |
+| Entrada sin costo, costo negativo o con más de 4 decimales; Salida con costo | `inventory_unit_cost_required`, `inventory_unit_cost_invalid`, `inventory_unit_cost_not_allowed` | 422 |
+| Artículo ajeno o inexistente, inactivo o sin control de inventario | `inventory_product_not_available`, `inventory_product_inactive`, `inventory_product_not_tracked` | 422 |
+| Bodega ajena, inexistente o inactiva | `inventory_warehouse_not_available` | 422 |
+| Existencia insuficiente para la salida | `inventory_insufficient_stock` | 422 |
+| Ajuste o transferencia | `inventory_movement_kind_not_supported` | 422 |
+| Módulo, tipo o clave no válidos | `inventory_source_invalid` | 422 |
+| Misma clave con contenido distinto | `inventory_idempotency_conflict` | 409 |
+
+Son `DomainException`/`ConflictException` del dominio; el host las convierte en `ProblemDetails` con `code`, como en el resto de la API.
+
+### Fallos y transacción
+
+Si el movimiento falla, **la compra o la venta no se confirma a medias**. El caso de uso de Compras o Ventas controla
+el commit y, dentro de una sola transacción:
+
+1. Guarda el documento.
+2. Llama a `RegisterAsync` y obtiene `TotalCost` (solo si hay líneas con control de inventario).
+3. Llama a `IAccountingPostingService.PostAsync` con los importes de ACUERDO-02.
+4. Confirma. Ante cualquier excepción se revierte todo: documento, movimiento y asiento.
+
+Las validaciones de catálogo, precio y stock fallan antes de confirmar el documento. Una respuesta incierta
+(por ejemplo, se cortó la conexión) se reconcilia repitiendo con la **misma clave**; nunca se crea un segundo documento.
+
+Inventario no hace commit propio ni cambia la empresa. Para que esto funcione se necesita la
+**transacción compartida entre módulos** que ACUERDO-02 identificó como brecha: hoy cada `DbContext` abre su propia
+conexión. Es un requisito común que se coordina como tarea aparte antes de habilitar la confirmación en PUR-02 y SAL-02.
+Si en el futuro se separan las bases, se necesita otro acuerdo de compensación u *outbox*; no se acepta éxito parcial.
+
+### Fuera de este acuerdo
+
+Devoluciones, anulaciones, ajustes, transferencias, reservas, lotes y series. Los movimientos no se editan ni se
+borran: una corrección futura será un movimiento nuevo enlazado al original, igual que los reversos contables.
+
+### Decisiones para revisar
+
+1. Sin stock negativo (D-06).
+2. Costo promedio ponderado móvil por artículo y bodega; `TotalCost` con 2 decimales.
+3. Una bodega principal por empresa; Compras y Ventas guardan la bodega en su documento.
+4. El módulo origen agrupa las líneas por artículo y no envía servicios ni artículos sin control.
+5. Misma clave e idempotencia que ACUERDO-02.
+6. Orden documento → stock → asiento en una sola transacción.
+
+### Estado de la implementación (PR #30)
+
+El PR #30 integró una primera versión de `InventoryStockService` (movimientos y saldos) y su uso desde Ventas.
+Ya cumple: sin stock negativo, idempotencia por clave dentro de la empresa y omisión de servicios en la salida.
+INV-03 (#15) la ajusta a este acuerdo; hasta entonces **no se habilita la confirmación integrada** de compras y ventas.
+
+| Tema | Hoy en `main` | Según ACUERDO-01 (INV-03) |
+|---|---|---|
+| Costo de la salida | Ventas envía el costo de la ficha (`ProductSummary.Cost`) y calcula ella el costo de ventas | Inventario calcula el costo promedio y lo devuelve en `TotalCost`; Ventas usa ese valor en el asiento |
+| Bodegas | `WarehouseId` sin catálogo de bodegas | Tabla de bodegas con bodega principal por empresa y `GetDefaultWarehouseAsync` |
+| Artículos sin control | Se omiten en silencio | El origen no los envía; si llegan, `inventory_product_not_tracked` |
+| Reintento con otro contenido | Devuelve el movimiento original | 409 `inventory_idempotency_conflict` |
+| Ajuste y transferencia | Aceptados | Rechazados hasta otro acuerdo |
+| Códigos de error | `movement_*`, `stock_*` | `inventory_*` de la tabla de errores |
+| Cuentas del asiento de venta | Nombres de cuenta («Costo de ventas», «Inventario») | Códigos del plan de la empresa (ACUERDO-02) |
 
 ## Tributario (`ERP.Tributario`)
 - `EcuadorIdValidator` (sintáctico), `TaxRateCatalog` / `ITaxRateCatalogProvider` (tarifas por vigencia, nunca constantes), contratos SRI (`ISriGateway`, `IElectronicDocumentSigner`, `IAccessKeyGenerator`, `IElectronicDocumentXmlBuilder`).

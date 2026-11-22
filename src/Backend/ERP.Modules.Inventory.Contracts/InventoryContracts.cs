@@ -22,6 +22,11 @@ public enum VatTreatment
 /// <param name="Code">SKU (código principal en la factura).</param>
 /// <param name="Barcode">Código de barras / código auxiliar; null si no tiene.</param>
 /// <param name="TracksInventory">false para servicios y artículos sin control de stock: no generan movimientos.</param>
+/// <param name="Price">Precio de venta de la ficha, sin IVA.</param>
+/// <param name="Cost">
+/// Costo referencial de la ficha (para margen). No es el costo de inventario: el costo de una salida lo calcula
+/// Inventario y lo devuelve en <see cref="InventoryMovementResult.TotalCost"/> (ACUERDO-01 y ACUERDO-02).
+/// </param>
 public sealed record ProductSummary(
     Guid ProductId,
     string Code,
@@ -36,35 +41,47 @@ public sealed record ProductSummary(
     decimal? Cost);
 
 /// <summary>
-/// Existencia disponible y reservada de un artículo en una bodega.
-/// La cantidad disponible se interpreta como <c>QuantityOnHand - QuantityReserved</c>.
+/// Existencias de un artículo en una bodega de la empresa activa. Se calculan a partir de los movimientos; nunca se digitan.
+/// La cantidad disponible es <c>QuantityOnHand - QuantityReserved</c>.
 /// </summary>
+/// <param name="QuantityOnHand">Unidades físicas, escala 4.</param>
+/// <param name="QuantityReserved">Reservas: fuera del alcance de ACUERDO-01 (#11); 0 en este incremento.</param>
 public sealed record StockLevel(Guid ProductId, Guid WarehouseId, decimal QuantityOnHand, decimal QuantityReserved);
 
+/// <summary>Tipo de movimiento. ACUERDO-01 (#11) habilita solo <see cref="Entrada"/> y <see cref="Salida"/>.</summary>
 public enum InventoryMovementKind
 {
+    /// <summary>Ingreso de mercadería con costo (recepción de compra).</summary>
     Entrada = 1,
+
+    /// <summary>Egreso valorado al costo promedio vigente (venta).</summary>
     Salida = 2,
+
+    /// <summary>Reservado: fuera de ACUERDO-01; se habilita con un acuerdo posterior.</summary>
     Ajuste = 3,
+
+    /// <summary>Reservado: fuera de ACUERDO-01; se habilita con un acuerdo posterior.</summary>
     Transferencia = 4,
 }
 
-/// <param name="ProductId">Artículo de la empresa activa.</param>
-/// <param name="Quantity">Cantidad positiva con máximo 4 decimales.</param>
-/// <param name="UnitCost">Costo unitario obligatorio para entradas costeadas y opcional para otros movimientos.</param>
+/// <summary>Línea de un movimiento. Un artículo aparece una sola vez por solicitud: el módulo origen agrupa sus líneas.</summary>
+/// <param name="ProductId">Artículo activo de la empresa activa con <see cref="ProductSummary.TracksInventory"/> = true.</param>
+/// <param name="Quantity">Mayor que cero, escala máxima 4, en la unidad del artículo.</param>
+/// <param name="UnitCost">USD, escala máxima 4. Obligatorio y no negativo en una Entrada; null en una Salida (lo calcula Inventario).</param>
 public sealed record InventoryMovementLine(Guid ProductId, decimal Quantity, decimal? UnitCost);
 
 /// <summary>
-/// Solicitud explícita de movimiento. Empresa y actor vienen de <c>ITenantContext</c>;
-/// ningún DTO admite cambiar el tenant.
+/// Solicitud de movimiento de un documento de negocio. La empresa y el usuario se obtienen del ITenantContext
+/// confiable del servidor; ningún DTO admite cambiar el tenant.
 /// </summary>
-/// <param name="IdempotencyKey">Clave estable por empresa y operación; reintentos no crean otro movimiento.</param>
-/// <param name="SourceModule">Módulo propietario: <c>purchases</c> o <c>sales</c>.</param>
-/// <param name="SourceDocumentType">Tipo de documento: recepción, compra, venta o ajuste.</param>
-/// <param name="SourceDocumentId">Identificador persistente del documento de la empresa activa.</param>
-/// <param name="WarehouseId">Bodega de la empresa activa.</param>
-/// <param name="Kind">Entrada, salida, ajuste o transferencia.</param>
-/// <param name="Lines">Una línea por artículo; los servicios y artículos sin control se omiten.</param>
+/// <param name="IdempotencyKey">Clave estable <c>&lt;modulo&gt;:&lt;tipo&gt;:&lt;uuid&gt;</c> del documento; el emisor la conserva en cada reintento.</param>
+/// <param name="SourceModule"><c>purchases</c> o <c>sales</c>.</param>
+/// <param name="SourceDocumentType"><c>receipt</c> (recepción de compra) o <c>invoice</c> (venta).</param>
+/// <param name="SourceDocumentId">UUID del documento origen de la empresa activa, para el kardex.</param>
+/// <param name="WarehouseId">Bodega de la empresa activa; el documento origen la guarda para repetirla en los reintentos.</param>
+/// <param name="Kind">Entrada o Salida (ACUERDO-01).</param>
+/// <param name="MovementDate">Fecha local de Ecuador del documento. Los movimientos se valoran en el orden en que se registran.</param>
+/// <param name="Lines">Al menos una línea; sin artículos repetidos.</param>
 public sealed record InventoryMovementRequest(
     string IdempotencyKey,
     string SourceModule,
@@ -75,27 +92,41 @@ public sealed record InventoryMovementRequest(
     DateOnly MovementDate,
     IReadOnlyList<InventoryMovementLine> Lines);
 
+/// <summary>Resultado del movimiento; no sustituye el commit global del caso de uso llamador.</summary>
+/// <param name="MovementId">ID del movimiento; se conserva al repetir la misma solicitud.</param>
+/// <param name="AlreadyProcessed">true si la clave ya existía y se devolvió el movimiento original.</param>
+/// <param name="TotalCost">
+/// Costo total en USD con 2 decimales (redondeo AwayFromZero). Entrada: Σ cantidad × costo unitario.
+/// Salida: Σ cantidad × costo promedio vigente. En un reintento se devuelve el valor original, no se recalcula.
+/// Es el importe que Compras (Inventario) y Ventas (Costo de ventas) envían en su asiento (ACUERDO-02).
+/// </param>
 public sealed record InventoryMovementResult(Guid MovementId, bool AlreadyProcessed, decimal TotalCost);
 
-/// <summary>Consultas de catálogo y existencias. Estado: contrato definido, implementación pendiente (Integrante 5).</summary>
+/// <summary>Consulta del catálogo de artículos de la empresa activa. Estado: implementado en INV-01.</summary>
 public interface IProductCatalog
 {
     Task<IReadOnlyList<ProductSummary>> GetByIdsAsync(IReadOnlyCollection<Guid> productIds, CancellationToken cancellationToken);
 }
 
+/// <summary>
+/// Consulta de existencias de la empresa activa. Sirve para mostrar disponibilidad; no garantiza el stock al
+/// confirmar: eso lo valida <see cref="IInventoryMovementService"/>.
+/// INV-03 (#15) agrega la bodega principal por empresa y la consulta de varios artículos (ACUERDO-01).
+/// </summary>
 public interface IStockQueryService
 {
     /// <summary>
-    /// Consulta existencia por artículo y bodega dentro de la empresa activa.
-    /// Devuelve null si no existe saldo o si el artículo/bodega no pertenece al tenant.
+    /// Existencia por artículo y bodega dentro de la empresa activa. Devuelve null si no hay saldo
+    /// o si el artículo/bodega no pertenece al tenant; quien consulta interpreta null como 0 disponible.
     /// </summary>
     Task<StockLevel?> GetStockAsync(Guid productId, Guid warehouseId, CancellationToken cancellationToken);
 }
 
 /// <summary>
-/// Registra movimientos solicitados por Ventas/Compras.
-/// Stock negativo no está permitido. El movimiento es idempotente por clave dentro de la empresa.
-/// Los servicios y artículos con <c>TracksInventory=false</c> no generan líneas ni movimientos de salida/entrada.
+/// Único camino para que Compras y Ventas muevan stock; ningún módulo inserta en tablas de Inventario.
+/// Sin stock negativo, idempotente por empresa y clave, con control de concurrencia; participa en la transacción
+/// del caso de uso que lo invoca (no hace commit propio). Reglas completas: docs/contratos-modulos.md, ACUERDO-01 (#11).
+/// Estado: implementación inicial integrada en el PR #30; INV-03 (#15) completa costo promedio, bodegas y validaciones.
 /// </summary>
 public interface IInventoryMovementService
 {
