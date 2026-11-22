@@ -15,4 +15,7 @@
     <InternalsVisibleTo Include="ERP.UnitTests" />
     <InternalsVisibleTo Include="ERP.IntegrationTests" />
   </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="FluentValidation.DependencyInjectionExtensions" />
+  </ItemGroup>
 </Project>

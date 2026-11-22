@@ -11,6 +11,7 @@
     <ProjectReference Include="..\..\src\Backend\ERP.Tributario\ERP.Tributario.csproj" />
     <ProjectReference Include="..\..\src\Backend\ERP.Infrastructure\ERP.Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\Backend\ERP.Modules.Accounting\ERP.Modules.Accounting.csproj" />
+    <ProjectReference Include="..\..\src\Backend\ERP.Modules.Sales\ERP.Modules.Sales.csproj" />
     <ProjectReference Include="..\..\src\Backend\ERP.Modules.Platform\ERP.Modules.Platform.csproj" />
     <ProjectReference Include="..\..\src\Backend\ERP.Modules.Inventory\ERP.Modules.Inventory.csproj" />
     <ProjectReference Include="..\..\src\Backend\ERP.Modules.Purchases\ERP.Modules.Purchases.csproj" />

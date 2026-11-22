@@ -5,6 +5,8 @@ namespace ERP.Tributario.Sri;
 // ESTADO: solo interfaces. No hay adaptador real, ni endpoints, ni códigos de catálogo fijados.
 // Los códigos oficiales (tipo de comprobante, tipo de identificación, impuestos, etc.) deben tomarse
 // de la ficha técnica vigente del SRI y registrarse en docs/ecuador/matriz-normativa.md.
+// ACUERDO-03: esta entrega se limita a simulación; el ambiente de pruebas y producción quedan bloqueados
+// hasta completar certificado, XSD, clave de acceso y endpoints verificados.
 // Por defecto se usan simuladores o el ambiente oficial de pruebas; nunca producción sin autorización
 // explícita del dueño del certificado y de las credenciales.
 // ─────────────────────────────────────────────────────────────────────────────────────────────

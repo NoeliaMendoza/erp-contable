@@ -4,6 +4,7 @@ using ERP.Modules.Accounting.Data;
 using ERP.Modules.Inventory.Data;
 using ERP.Modules.Platform.Data;
 using ERP.Modules.Purchases.Data;
+using ERP.Modules.Sales.Data;
 using Microsoft.EntityFrameworkCore;
 
 namespace ERP.DbMigrator;
@@ -30,6 +31,8 @@ public sealed class DatabaseMigrator(string migratorConnectionString)
         await using var inventory = CreateInventoryContext(TenantSession.ForSystem());
         await inventory.Database.MigrateAsync(cancellationToken);
 
+        await using var sales = CreateSalesContext(TenantSession.ForSystem());
+        await sales.Database.MigrateAsync(cancellationToken);
         await using var accounting = CreateAccountingContext(TenantSession.ForSystem());
         await accounting.Database.MigrateAsync(cancellationToken);
 
@@ -52,20 +55,28 @@ public sealed class DatabaseMigrator(string migratorConnectionString)
         return new AuthDbContext(options.Options);
     }
 
-    internal AccountingDbContext CreateAccountingContext(TenantSession session)
-    {
-        var options = new DbContextOptionsBuilder<AccountingDbContext>();
-        PersistenceRegistration.ConfigureNpgsql(options, migratorConnectionString, AccountingDbContext.Schema);
-        options.AddInterceptors(new TenantSessionInterceptor(session));
-        return new AccountingDbContext(options.Options, session);
-    }
-
     internal InventoryDbContext CreateInventoryContext(TenantSession session)
     {
         var options = new DbContextOptionsBuilder<InventoryDbContext>();
         PersistenceRegistration.ConfigureNpgsql(options, migratorConnectionString, InventoryDbContext.Schema);
         options.AddInterceptors(new TenantSessionInterceptor(session));
         return new InventoryDbContext(options.Options, session);
+    }
+
+    internal SalesDbContext CreateSalesContext(TenantSession session)
+    {
+        var options = new DbContextOptionsBuilder<SalesDbContext>();
+        PersistenceRegistration.ConfigureNpgsql(options, migratorConnectionString, SalesDbContext.Schema);
+        options.AddInterceptors(new TenantSessionInterceptor(session));
+        return new SalesDbContext(options.Options, session);
+    }
+
+    internal AccountingDbContext CreateAccountingContext(TenantSession session)
+    {
+        var options = new DbContextOptionsBuilder<AccountingDbContext>();
+        PersistenceRegistration.ConfigureNpgsql(options, migratorConnectionString, AccountingDbContext.Schema);
+        options.AddInterceptors(new TenantSessionInterceptor(session));
+        return new AccountingDbContext(options.Options, session);
     }
 
     internal PurchasesDbContext CreatePurchasesContext(TenantSession session)

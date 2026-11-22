@@ -1,0 +1,72 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:ERP.Frontend.Modules.Sales.ViewModels"
+             xmlns:sales="using:ERP.Frontend.Modules.Sales"
+             xmlns:controls="using:ERP.Frontend.Shared.Controls"
+             x:Class="ERP.Frontend.Modules.Sales.Views.CustomersView"
+             x:DataType="vm:CustomersViewModel">
+  <StackPanel Spacing="12">
+    <TextBlock Classes="h1" Text="Clientes" />
+    <controls:FeedbackBar IsBusy="{Binding IsBusy}" ErrorMessage="{Binding ErrorMessage}" SuccessMessage="{Binding SuccessMessage}" />
+    <Border Classes="card" IsVisible="{Binding CanWrite}">
+      <StackPanel Spacing="8">
+        <TextBlock Classes="h2" Text="{Binding FormTitle}" />
+        <Grid ColumnDefinitions="1*,2*,2*" ColumnSpacing="8">
+          <ComboBox ItemsSource="{Binding IdentificationTypes}" SelectedItem="{Binding FormType}" Grid.Column="0">
+            <ComboBox.ItemTemplate>
+              <DataTemplate x:DataType="sales:IdentificationOption"><TextBlock Text="{Binding Label}" /></DataTemplate>
+            </ComboBox.ItemTemplate>
+          </ComboBox>
+          <controls:FormField Grid.Column="1" Label="Número de identificación" ErrorMessage="{Binding IdentificationNumberError}">
+            <controls:FormField.FieldContent><TextBox Text="{Binding IdentificationNumber}" /></controls:FormField.FieldContent>
+          </controls:FormField>
+          <controls:FormField Grid.Column="2" Label="Nombre" ErrorMessage="{Binding NameError}">
+            <controls:FormField.FieldContent><TextBox Text="{Binding Name}" /></controls:FormField.FieldContent>
+          </controls:FormField>
+        </Grid>
+        <Grid ColumnDefinitions="*,*,*" ColumnSpacing="8">
+          <controls:FormField Grid.Column="0" Label="Email" ErrorMessage="{Binding EmailError}">
+            <controls:FormField.FieldContent><TextBox Text="{Binding Email}" /></controls:FormField.FieldContent>
+          </controls:FormField>
+          <controls:FormField Grid.Column="1" Label="Teléfono" ErrorMessage="{Binding PhoneError}">
+            <controls:FormField.FieldContent><TextBox Text="{Binding Phone}" /></controls:FormField.FieldContent>
+          </controls:FormField>
+          <controls:FormField Grid.Column="2" Label="Dirección" ErrorMessage="{Binding AddressError}">
+            <controls:FormField.FieldContent><TextBox Text="{Binding Address}" /></controls:FormField.FieldContent>
+          </controls:FormField>
+        </Grid>
+        <StackPanel Orientation="Horizontal" Spacing="8">
+          <Button Classes="primary" Content="Guardar" Command="{Binding SaveCommand}" IsEnabled="{Binding !IsBusy}" />
+          <Button Content="Cancelar" Command="{Binding NewCustomerCommand}" />
+        </StackPanel>
+      </StackPanel>
+    </Border>
+    <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+      <controls:SearchBox Grid.Column="0" SearchText="{Binding Search, Mode=TwoWay}" PlaceholderText="Buscar cliente" ClearCommand="{Binding ClearSearchCommand}" />
+      <CheckBox Grid.Column="1" Content="Incluir inactivos" IsChecked="{Binding IncludeInactive}" />
+      <Button Grid.Column="2" Content="Buscar" Command="{Binding SearchNowCommand}" />
+    </Grid>
+    <Border Classes="card">
+      <ItemsControl ItemsSource="{Binding Customers}">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="sales:CustomerItem">
+            <Grid ColumnDefinitions="2*,2*,1.5*,1.5*,Auto" ColumnSpacing="8" Margin="0,4">
+              <TextBlock Grid.Column="0" Text="{Binding Name}" />
+              <TextBlock Grid.Column="1" Text="{Binding IdentificationNumber}" />
+              <TextBlock Grid.Column="2" Text="{Binding Email}" />
+              <TextBlock Grid.Column="3" Text="{Binding Status}" />
+              <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="4">
+                <Button Content="Editar"
+                        Command="{Binding $parent[UserControl].((vm:CustomersViewModel)DataContext).EditCommand}"
+                        CommandParameter="{Binding}" />
+                <Button Content="Cambiar"
+                        Command="{Binding $parent[UserControl].((vm:CustomersViewModel)DataContext).ConfirmToggleCommand}"
+                        CommandParameter="{Binding}" />
+              </StackPanel>
+            </Grid>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </Border>
+  </StackPanel>
+</UserControl>

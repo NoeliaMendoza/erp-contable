@@ -113,6 +113,112 @@ namespace ERP.Modules.Accounting.Data.Migrations
                         });
                 });
 
+            modelBuilder.Entity("ERP.Modules.Accounting.Models.JournalEntryEntity", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateOnly>("AccountingDate")
+                        .HasColumnType("date")
+                        .HasColumnName("accounting_date");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("IdempotencyKey")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("idempotency_key");
+
+                    b.Property<DateTimeOffset>("PostedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("posted_at_utc");
+
+                    b.Property<Guid>("SourceDocumentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("source_document_id");
+
+                    b.Property<string>("SourceDocumentType")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("source_document_type");
+
+                    b.Property<string>("SourceModule")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("source_module");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer")
+                        .HasColumnName("status");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_journal_entries");
+
+                    b.HasAlternateKey("TenantId", "Id")
+                        .HasName("ak_journal_entries_tenant_id_id");
+
+                    b.HasIndex("TenantId", "IdempotencyKey")
+                        .IsUnique()
+                        .HasDatabaseName("ix_journal_entries_tenant_id_idempotency_key");
+
+                    b.ToTable("journal_entries", "accounting");
+                });
+
+            modelBuilder.Entity("ERP.Modules.Accounting.Models.JournalEntryLineEntity", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("AccountCode")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("account_code");
+
+                    b.Property<decimal>("Credit")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("credit");
+
+                    b.Property<decimal>("Debit")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("debit");
+
+                    b.Property<Guid>("JournalEntryId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("journal_entry_id");
+
+                    b.Property<string>("Memo")
+                        .HasColumnType("text")
+                        .HasColumnName("memo");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_journal_entry_lines");
+
+                    b.HasIndex("TenantId", "JournalEntryId")
+                        .HasDatabaseName("ix_journal_entry_lines_tenant_id_journal_entry_id");
+
+                    b.ToTable("journal_entry_lines", "accounting");
+                });
+
             modelBuilder.Entity("ERP.Modules.Accounting.Models.Account", b =>
                 {
                     b.HasOne("ERP.Modules.Accounting.Models.Account", null)
@@ -121,6 +227,17 @@ namespace ERP.Modules.Accounting.Data.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .HasConstraintName("fk_accounts_accounts_tenant_id_parent_id");
+                });
+
+            modelBuilder.Entity("ERP.Modules.Accounting.Models.JournalEntryLineEntity", b =>
+                {
+                    b.HasOne("ERP.Modules.Accounting.Models.JournalEntryEntity", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "JournalEntryId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_journal_entry_lines_journal_entries_tenant_id_journal_entry");
                 });
 #pragma warning restore 612, 618
         }

@@ -5,6 +5,8 @@ using ERP.Frontend.Modules.Inventory.ViewModels;
 using ERP.Frontend.Modules.Platform.ViewModels;
 using ERP.Frontend.Modules.Purchases;
 using ERP.Frontend.Modules.Purchases.ViewModels;
+using ERP.Frontend.Modules.Sales;
+using ERP.Frontend.Modules.Sales.ViewModels;
 using ERP.Frontend.Modules.Ui.ViewModels;
 using ERP.Frontend.Shared.Api;
 using ERP.Frontend.Shared.Mvvm;
@@ -40,7 +42,8 @@ public sealed class PageFactory(ErpApiClient api, SessionState session, Frontend
     public ProductsViewModel InventoryProducts() => new(new InventoryApi(api), session);
 
     public CategoriesViewModel InventoryCategories() => new(new InventoryApi(api), session);
-
+    public SalesViewModel Sales() => new(new SalesApi(api), new InventoryApi(api), session);
+    public CustomersViewModel Customers() => new(new SalesApi(api), session);
     public SuppliersViewModel PurchaseSuppliers() => new(new PurchasesApi(api), session);
 }
 
@@ -51,7 +54,6 @@ public static class FrontendModules
 {
     public static readonly IReadOnlyList<FrontendModule> Pending =
     [
-        new("sales", "Ventas", "Integrante 3", "Clientes, documentos de venta, cuentas por cobrar y comprobantes SRI."),
         new("reporting", "Reportes", "Integrante 6", "Dashboard, reportes PDF/Excel y conciliaciones internas."),
     ];
 }
