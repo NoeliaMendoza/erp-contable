@@ -1,8 +1,8 @@
 ## Qué cambia
 
-<!-- Objetivo y alcance. Enlazar el Issue: "Cierra #N" -->
+<!-- Objetivo y alcance. Sustituye N por el número del issue. -->
 
-Cierra #
+Closes #N
 
 ## Módulo(s) afectado(s)
 

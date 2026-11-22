@@ -9,6 +9,7 @@ publish/
 .vs/
 .vscode/*
 !.vscode/extensions.json
+!.vscode/settings.json
 .idea/
 *.DotSettings.user
 TestResults/

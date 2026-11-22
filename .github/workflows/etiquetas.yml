@@ -1,0 +1,21 @@
+# Pone las etiquetas de módulo en cada PR según las carpetas que cambia (reglas en .github/labeler.yml).
+# pull_request_target permite etiquetar también PR desde forks; es seguro aquí porque el job no descarga
+# ni ejecuta código del PR: labeler solo lee la lista de archivos y la configuración de la rama main.
+name: Etiquetas por módulo
+
+on:
+  pull_request_target:
+    types: [opened, reopened, synchronize]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  etiquetar:
+    name: Etiquetar por módulo
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/labeler@v5
+        with:
+          sync-labels: false

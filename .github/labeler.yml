@@ -1,0 +1,58 @@
+# Etiquetas que se ponen solas en los PR según las carpetas que cambian (actions/labeler v5).
+# Lo usa .github/workflows/etiquetas.yml. Un PR que toca varios módulos recibe varias etiquetas.
+
+'modulo: plataforma':
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'src/Backend/ERP.Modules.Platform/**'
+          - 'src/Frontend/ERP.Frontend/Modules/Platform/**'
+          - 'src/Frontend/ERP.Frontend.Shared/Session/**'
+          - 'docs/modulos/autenticacion.md'
+
+'modulo: contabilidad':
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'src/Backend/ERP.Modules.Accounting/**'
+          - 'src/Backend/ERP.Modules.Accounting.Contracts/**'
+          - 'src/Frontend/ERP.Frontend/Modules/Accounting/**'
+          - 'docs/modulos/contabilidad.md'
+          - 'docs/modulos/acc0*'
+          - 'docs/modulos/acuerdo02*'
+
+'modulo: ventas':
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'src/Backend/ERP.Modules.Sales/**'
+          - 'src/Frontend/ERP.Frontend/Modules/Sales/**'
+          - 'src/Backend/ERP.Tributario/**'
+
+'modulo: compras':
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'src/Backend/ERP.Modules.Purchases/**'
+          - 'src/Frontend/ERP.Frontend/Modules/Purchases/**'
+          - 'src/Backend/ERP.Tributario/**'
+
+'modulo: inventario':
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'src/Backend/ERP.Modules.Inventory/**'
+          - 'src/Backend/ERP.Modules.Inventory.Contracts/**'
+          - 'src/Frontend/ERP.Frontend/Modules/Inventory/**'
+          - 'docs/modulos/inventario.md'
+
+'modulo: interfaz':
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'src/Backend/ERP.Modules.Reporting/**'
+          - 'src/Frontend/ERP.Frontend/Modules/Reporting/**'
+          - 'src/Frontend/ERP.Frontend/Modules/Ui/**'
+          - 'src/Frontend/ERP.Frontend/Shell/**'
+          - 'src/Frontend/ERP.Frontend.Shared/Controls/**'
+          - 'src/Frontend/ERP.Frontend.Shared/Styles/**'
+
+'documentation':
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'docs/**'
+          - 'README.md'
