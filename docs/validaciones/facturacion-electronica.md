@@ -23,5 +23,18 @@ Pendiente = respuesta aún no disponible; se consulta autorización con reintent
 - Por defecto: **simulador** (pruebas automáticas) y **ambiente de pruebas del SRI** (sin validez tributaria).
 - Producción: adaptador distinto, habilitado por configuración explícita por contribuyente y solo con autorización del titular del certificado.
 
+## ACUERDO-03 — alcance decidido
+
+Esta entrega adopta **simulación** como nivel operativo acordado entre Reyes y Casas.
+La simulación sirve para probar estados, idempotencia y recuperación visual. No firma XML real,
+no usa certificados reales y no conecta ni recibe respuestas del SRI.
+
+La siguiente entrega puede entrar al ambiente de pruebas únicamente después de registrar:
+certificado de firma, versión XSD, clave de acceso, WSDL/endpoints de recepción y autorización,
+creación segura de secretos y casos de respuesta.
+
+Producción permanece deshabilitada hasta completar pruebas y obtener la habilitación correspondiente.
+La decisión completa está en [ACUERDO-03](acuerdo-sri-nivel-entrega.md).
+
 ## Datos a persistir (Ventas/SRI)
 Clave de acceso, ambiente, tipo, versión de esquema, XML generado/firmado/autorizado, número y fecha de autorización, mensajes, correlación, intentos.

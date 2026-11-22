@@ -1,10 +1,19 @@
 # Módulo Sales (escritorio)
 
-Carpeta reservada para las vistas (`Views/`) y ViewModels (`ViewModels/`) del módulo Sales.
+# Módulo Ventas
 
-1. Crear ViewModels heredando de `ViewModelBase` (ERP.Frontend.Shared.Mvvm).
-2. Registrar el par VM → Vista en `ViewLocator.cs` y la página en `Shell/PageFactory.cs`.
-3. Consumir solo la API REST mediante métodos nuevos en `ErpApiClient` (ERP.Frontend.Shared).
-4. Ocultar acciones según permisos es solo UX: la API valida todo.
+La pantalla confirma ventas al contado desde `/api/v1/sales/confirm`.
 
-Ver `docs/contratos-modulos.md`.
+- Valida sesión y permiso `sales.invoices.issue` en el servidor.
+- Toma el precio vigente del catálogo; no permite precios enviados desde el escritorio.
+- Previene doble envío por estado local e `IdempotencyKey`.
+- Muestra borrador/confirmada y referencia técnica en los errores de API.
+- El estado electrónico empieza en `NotRequested`. ACUERDO-03 limita esta entrega a simulación;
+  no debe mostrarse como autorización del SRI hasta tener una respuesta verificable real.
+
+## Clientes (CRUD)
+
+- Pantalla conectada a `/api/v1/customers`.
+- Permisos `sales.customers.read` y `sales.customers.write`.
+- Tipos: RUC, cédula, pasaporte y consumidor final.
+- Validación ecuatoriana mostrada como advertencia; no bloquea el registro.

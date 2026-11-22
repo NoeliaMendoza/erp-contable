@@ -1,4 +1,10 @@
 using ERP.BuildingBlocks.Security;
+using ERP.Infrastructure.Persistence;
+using ERP.Modules.Sales.Data;
+using ERP.Modules.Sales.Services;
+using ERP.Modules.Sales.Validators;
+using ERP.Tributario.Tax;
+using FluentValidation;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -18,6 +24,10 @@ public static class SalesModule
     {
         _ = configuration;
         services.AddControllers().AddApplicationPart(typeof(SalesModule).Assembly);
+        services.AddModuleDbContext<SalesDbContext>(configuration, SalesDbContext.Schema);
+        services.AddScoped<SaleService>();
+        services.AddScoped<CustomerService>();
+        services.AddValidatorsFromAssemblyContaining<SaveCustomerRequestValidator>();
         services.AddSingleton<IPermissionProvider, SalesPermissionProvider>();
         return services;
     }
@@ -27,6 +37,7 @@ public static class SalesPermissions
 {
     public const string CustomersRead = "sales.customers.read";
     public const string CustomersManage = "sales.customers.manage";
+    public const string CustomersWrite = "sales.customers.write";
     public const string InvoicesRead = "sales.invoices.read";
     public const string InvoicesIssue = "sales.invoices.issue";
     public const string ReceivablesRead = "sales.receivables.read";
@@ -37,6 +48,7 @@ public sealed class SalesPermissionProvider : IPermissionProvider
     public IEnumerable<PermissionDefinition> GetPermissions() =>
     [
         new(SalesPermissions.CustomersRead, SalesModule.Module, "Consultar clientes"),
+        new(SalesPermissions.CustomersWrite, SalesModule.Module, "Crear, editar y desactivar clientes"),
         new(SalesPermissions.CustomersManage, SalesModule.Module, "Administrar clientes"),
         new(SalesPermissions.InvoicesRead, SalesModule.Module, "Consultar documentos de venta"),
         new(SalesPermissions.InvoicesIssue, SalesModule.Module, "Emitir documentos de venta"),

@@ -38,9 +38,9 @@ Este mantenimiento no implementa todavía el servicio de contabilización del si
 
 ## Accounting.Contracts — ACUERDO-02 (#12)
 
-**Estado: base v1 aprobada por Noe e integrada en el PR #25; ampliación de IVA propuesta para revisión.**
-Las firmas públicas existentes se conservan. La aprobación del acuerdo exige revisión del productor
-y de los consumidores; esta definición no declara implementado `IAccountingPostingService` ni completa ACC-03 (#17).
+**Estado: base v1 e IVA aprobados por Noe e integrados en los PR #25 y #26; tarea #12 cerrada por Noe.**
+Las firmas públicas existentes se conservan. La revisión y coordinación del productor con los consumidores
+se mantiene para cambios posteriores; esta definición no declara implementado `IAccountingPostingService` ni completa ACC-03 (#17).
 El estado de cada decisión y la revisión requerida por Noe, Compras y Ventas constan en [modulos/acuerdo02-propuesta.md](modulos/acuerdo02-propuesta.md).
 
 ### Entrada y resultado
@@ -218,10 +218,15 @@ líneas de Caja, Ventas e IVA cuando aplique, sin salida/costo de mercancía.
 Cuando el impuesto sea cero se omite su línea contable, porque `PostingLine` no admite debe/haber ambos cero;
 la clasificación fiscal cero/exento/no objeto permanece en el documento origen.
 
-**Ejemplo numérico de prueba, no tarifa vigente:** con un catálogo sintético del 10%, la compra da IP = 3,
-total 33 y debe/haber 33. La venta da IV = 2, cobro 22 y debe/haber del asiento completo 34 (22 + costo 12).
-El porcentaje no es una recomendación fiscal: solo demuestra el balance. El siguiente helper de documentación
-genera esos datos con la tarifa que reciba; no invoca el servicio ni valida la elegibilidad de un contribuyente.
+**Ejemplo principal de Ecuador con IVA general del 15%:** para la compra de base 30, IP = 4.50,
+total pagado 34.50 y debe/haber 34.50. Para la venta de base 20, IV = 3.00, cobro total 23.00
+y debe/haber del asiento completo 35.00 (23.00 + costo 12).
+La referencia es la [Circular SRI NAC-DGECCGC25-00000006](https://www.sri.gob.ec/o/sri-portlet-biblioteca-alfresco-internet/descargar?id=236482f4-6125-42fd-b073-62c99d08233d&nombre=NAC-DGECCGC25-00000006.pdf),
+que mantiene la tarifa general del 15% hasta que se modifique por decreto. No se extiende ese porcentaje
+a artículos con tarifa cero, exentos, no objeto o a regímenes/fechas con una tarifa especial aplicable.
+El siguiente helper obtiene el porcentaje del catálogo suministrado; no lo fija dentro de Compras/Ventas/Contabilidad,
+no invoca el servicio ni valida la elegibilidad de un contribuyente. Las pruebas ejecutables usan un catálogo aislado,
+que no sustituye el proveedor/catálogo oficial pendiente.
 Su escenario presupone IVA de compra totalmente recuperable y precios antes de IVA:
 
 ```csharp
@@ -271,9 +276,11 @@ original y las mismas líneas; no vuelve a resolver otra tarifa con la fecha act
 distinto es conflicto, no otro asiento. Si falta tarifa, cuenta o tratamiento de recuperabilidad, la operación completa
 debe fallar dentro del flujo de documento/stock/asiento ya descrito, sin éxito parcial.
 
-**Fuente y alcance:** [SRI: Impuesto al Valor Agregado](https://www.sri.gob.ec/impuesto-al-valor-agregado-iva),
-consultado para esta ampliación el 20/11/2026. La fuente describe base, tratamientos y crédito sujeto a condiciones;
-no se carga de ella una tarifa fija ni se sustituye la verificación de la normativa aplicable a cada fecha/documento.
+**Fuentes y alcance:** [Circular SRI NAC-DGECCGC25-00000006](https://www.sri.gob.ec/o/sri-portlet-biblioteca-alfresco-internet/descargar?id=236482f4-6125-42fd-b073-62c99d08233d&nombre=NAC-DGECCGC25-00000006.pdf)
+para la continuidad de la tarifa general del 15%, y [SRI: Impuesto al Valor Agregado](https://www.sri.gob.ec/impuesto-al-valor-agregado-iva)
+para base, tratamientos y crédito sujeto a condiciones; consultadas para esta ampliación el 20/11/2026.
+La tarifa del ejemplo se verifica con la circular específica, no solo con el texto general de la página informativa.
+No se convierte en una constante del módulo ni sustituye la verificación de normativa por fecha/documento.
 Retenciones, notas de crédito, declaraciones y crédito proporcional requieren sus propios acuerdos y no se habilitan aquí.
 La separación del impuesto recuperable del costo de inventario del ejemplo también sigue la referencia de
 [IAS 2, párrafo 11 (IFRS Foundation, edición 2021)](https://www.ifrs.org/content/dam/ifrs/publications/pdf-standards/english/2021/issued/part-a/ias-2-inventories.pdf),
@@ -342,15 +349,60 @@ entrega completa, ACC-03 deberá probar: ejemplo 30/20/12, reintento idéntico y
 aislamiento entre empresas, IVA positivo/cero, vigencias y falta de configuración fiscal, y rollback de documento/stock/asiento. Aquí se define ese comportamiento;
 no se presenta como implementado ni probado todavía.
 
+## Customers/Identification (Sales)
+
+ACUERDO con Compras (Torres): el catálogo compartido de tipos de identificación usa estos valores:
+
+| Valor API | Texto visible | Número máximo | Normalización |
+|---|---|---|---|
+| `Ruc` | RUC | 13 caracteres | Trim; solo dígitos; la estructura ecuatoriana se valida como advertencia |
+| `Cedula` | Cédula | 10 caracteres | Trim; solo dígitos; el validador ecuatoriano se usa como advertencia |
+| `Pasaporte` | Pasaporte | 20 caracteres | Trim; MAYÚSCULAS |
+| `ConsumidorFinal` | Consumidor final | 20 caracteres | Trim; MAYÚSCULAS |
+
+El cliente usa el mismo catálogo que los proveedores futuros. `EcuadorIdValidator` nunca rechaza
+un documento por sí solo en esta entrega: su resultado se puede mostrar como advertencia y el
+registro persiste. RUC, cédula, pasaporte y consumidor final son texto; no se usan identificadores
+numéricos ni algoritmos locales como barreras de alta.
+
+Reglas comunes:
+
+- Nombre obligatorio, máximo 200 caracteres.
+- Email opcional, máximo 320 caracteres y formato válido.
+- Teléfono opcional, máximo 30 caracteres.
+- Dirección opcional, máximo 300 caracteres.
+- Baja lógica; no se elimina físicamente.
+- Unicidad por `(tenant_id, identification_type, identification_number)`.
+- El mismo número puede existir en otra empresa o con otro tipo.
+
+## API CRUD de clientes
+
+Ruta: `/api/v1/customers`.
+
+| Operación | Ruta | Permiso |
+|---|---|---|
+| Listar | `GET /api/v1/customers` | `sales.customers.read` |
+| Detalle | `GET /api/v1/customers/{id}` | `sales.customers.read` |
+| Crear | `POST /api/v1/customers` | `sales.customers.write` |
+| Editar | `PUT /api/v1/customers/{id}` | `sales.customers.write` |
+| Activar/desactivar | `PATCH /api/v1/customers/{id}/status` | `sales.customers.write` |
+
+La lista usa paginación común y búsqueda por nombre, número, email o teléfono.
+Crear o editar devuelve `409` ante duplicado compuesto por empresa, tipo y número.
+Los identificadores ajenos responden `404`; sin sesión `401`; sin permiso o empresa ajena `403`.
+
 ## Inventory.Contracts (Mendoza)
 - `IProductCatalog.GetByIdsAsync`: **implementado** (INV-01). Solo artículos de la empresa activa; incluye `VatTreatment` (Ventas resuelve el código SRI y el porcentaje vigente con `TaxRateCatalog`), `TracksInventory` y `Barcode`; detalle en [modulos/inventario.md](modulos/inventario.md).
-- `IStockQueryService` e `IInventoryMovementService`: definidos por ACUERDO-01 (#11), abajo; implementación en INV-03 (#15).
+- `IStockQueryService.GetStockAsync` e `IInventoryMovementService.RegisterAsync`: reglas en ACUERDO-01 (#11), abajo.
+  Hay una **implementación inicial** integrada en el PR #30 (sin stock negativo e idempotente); INV-03 (#15) la completa
+  según el acuerdo. Las diferencias pendientes están en «Estado de la implementación».
 
 ## Inventory.Contracts — ACUERDO-01 (#11)
 
 **Estado: propuesta de Mendoza para revisión de Compras (Torres) y Ventas (Casas).** Define cómo esos módulos
-piden una entrada o salida de stock. No declara implementado ningún servicio: eso es INV-03 (#15).
-Los importes de costo que devuelve Inventario son los que usan los asientos de ACUERDO-02 (#12).
+piden una entrada o salida de stock. Reemplaza la sección «ACUERDO-04» que se integró en el PR #30: era el mismo
+tema con otro número; de ella se conservan la política sin stock negativo, la idempotencia, la consulta de existencias
+y el fallo completo. Los importes de costo que devuelve Inventario son los que usan los asientos de ACUERDO-02 (#12).
 
 ### Quién pide qué
 
@@ -372,7 +424,7 @@ Inventario lo rechaza con `inventory_product_not_tracked`; no lo ignora en silen
 | Empresa y usuario | `ITenantContext` de la solicitud autenticada; no hay `TenantId` en el DTO |
 | `IdempotencyKey` | `<modulo>:<tipo>:<uuid-en-formato-D>` del documento, igual que en ACUERDO-02; la misma en cada reintento |
 | `SourceDocumentId` | UUID del documento de la empresa activa; queda en el kardex para saber de dónde vino cada movimiento |
-| `WarehouseId` | Bodega de la empresa activa. Cada empresa tiene una **bodega principal** (INV-03); `GetDefaultWarehouseAsync` la devuelve. El documento guarda la bodega usada |
+| `WarehouseId` | Bodega de la empresa activa. Cada empresa tiene una **bodega principal**: INV-03 crea las bodegas y agrega `IStockQueryService.GetDefaultWarehouseAsync` para obtenerla. El documento guarda la bodega usada |
 | `MovementDate` | `DateOnly` de Ecuador del documento. Los movimientos se valoran **en el orden en que se registran**; no se recalcula la historia por fechas anteriores |
 | `Lines` | Al menos una; cada artículo **una sola vez** (el módulo origen agrupa). Cantidad > 0 con escala máxima 4 |
 
@@ -388,7 +440,9 @@ Inventario lo rechaza con `inventory_product_not_tracked`; no lo ignora en silen
 - **Concurrencia:** dos ventas simultáneas no pueden consumir la misma última unidad. INV-03 descuenta con una
   actualización condicional o un bloqueo de la fila de existencias dentro de la transacción; una consulta previa
   con `IStockQueryService` no garantiza el stock.
-- `IStockQueryService` solo informa la disponibilidad para mostrarla en pantalla. `QuantityReserved` es 0: no hay reservas.
+- `IStockQueryService.GetStockAsync(productId, warehouseId)` solo informa la disponibilidad para mostrarla en pantalla.
+  Un saldo inexistente (`null`) se interpreta como 0 disponible; el disponible es `QuantityOnHand - QuantityReserved`,
+  y `QuantityReserved` es 0 porque no hay reservas. INV-03 agrega la consulta de varios artículos para la pantalla de venta.
 
 Ejemplo de la tarea, en una sola bodega: entrada de 10 cuadernos a USD 3 → existencia 10, promedio 3, `TotalCost` 30.
 Salida de 4 → existencia 6, promedio 3, `TotalCost` 12.
@@ -458,9 +512,13 @@ el commit y, dentro de una sola transacción:
 3. Llama a `IAccountingPostingService.PostAsync` con los importes de ACUERDO-02.
 4. Confirma. Ante cualquier excepción se revierte todo: documento, movimiento y asiento.
 
+Las validaciones de catálogo, precio y stock fallan antes de confirmar el documento. Una respuesta incierta
+(por ejemplo, se cortó la conexión) se reconcilia repitiendo con la **misma clave**; nunca se crea un segundo documento.
+
 Inventario no hace commit propio ni cambia la empresa. Para que esto funcione se necesita la
 **transacción compartida entre módulos** que ACUERDO-02 identificó como brecha: hoy cada `DbContext` abre su propia
 conexión. Es un requisito común que se coordina como tarea aparte antes de habilitar la confirmación en PUR-02 y SAL-02.
+Si en el futuro se separan las bases, se necesita otro acuerdo de compensación u *outbox*; no se acepta éxito parcial.
 
 ### Fuera de este acuerdo
 
@@ -476,8 +534,37 @@ borran: una corrección futura será un movimiento nuevo enlazado al original, i
 5. Misma clave e idempotencia que ACUERDO-02.
 6. Orden documento → stock → asiento en una sola transacción.
 
+### Estado de la implementación (PR #30)
+
+El PR #30 integró una primera versión de `InventoryStockService` (movimientos y saldos) y su uso desde Ventas.
+Ya cumple: sin stock negativo, idempotencia por clave dentro de la empresa y omisión de servicios en la salida.
+INV-03 (#15) la ajusta a este acuerdo; hasta entonces **no se habilita la confirmación integrada** de compras y ventas.
+
+| Tema | Hoy en `main` | Según ACUERDO-01 (INV-03) |
+|---|---|---|
+| Costo de la salida | Ventas envía el costo de la ficha (`ProductSummary.Cost`) y calcula ella el costo de ventas | Inventario calcula el costo promedio y lo devuelve en `TotalCost`; Ventas usa ese valor en el asiento |
+| Bodegas | `WarehouseId` sin catálogo de bodegas | Tabla de bodegas con bodega principal por empresa y `GetDefaultWarehouseAsync` |
+| Artículos sin control | Se omiten en silencio | El origen no los envía; si llegan, `inventory_product_not_tracked` |
+| Reintento con otro contenido | Devuelve el movimiento original | 409 `inventory_idempotency_conflict` |
+| Ajuste y transferencia | Aceptados | Rechazados hasta otro acuerdo |
+| Códigos de error | `movement_*`, `stock_*` | `inventory_*` de la tabla de errores |
+| Cuentas del asiento de venta | Nombres de cuenta («Costo de ventas», «Inventario») | Códigos del plan de la empresa (ACUERDO-02) |
+
 ## Tributario (`ERP.Tributario`)
 - `EcuadorIdValidator` (sintáctico), `TaxRateCatalog` / `ITaxRateCatalogProvider` (tarifas por vigencia, nunca constantes), contratos SRI (`ISriGateway`, `IElectronicDocumentSigner`, `IAccessKeyGenerator`, `IElectronicDocumentXmlBuilder`).
+  ACUERDO-03 fija simulación como nivel de esta entrega; el ambiente de pruebas y producción requieren inputs y verificaciones documentados en
+  [`docs/validaciones/acuerdo-sri-nivel-entrega.md`](validaciones/acuerdo-sri-nivel-entrega.md).
+- `EcuadorIdentificationCatalog` es la lista compartida por Clientes y Proveedores. Mantiene el código SRI, nombre y reglas de validación/uso para cada tipo; Ventas y Compras no deben declarar catálogos paralelos.
+
+| Tipo | Código SRI | Regla del número | Clientes | Proveedores |
+|---|---:|---|:---:|:---:|
+| RUC | `04` | 13 dígitos; validación sintáctica con `EcuadorIdValidator` | Sí | Sí |
+| Cédula | `05` | 10 dígitos; validación sintáctica con `EcuadorIdValidator` | Sí | Sí |
+| Pasaporte | `06` | Texto de hasta 20 caracteres | Sí | Sí |
+| Consumidor final | `07` | `9999999999999` | Sí | No |
+| Identificación del exterior | `08` | Texto | Sí | Sí |
+
+Normalización común: eliminar espacios y guiones antes de validar o guardar. El pasaporte además se convierte a mayúsculas. El módulo de Compras rechaza `07`, porque un proveedor siempre debe tener una identificación propia.
 
 ## Reporting ← módulos
 - Cada módulo publica consultas de lectura (proyecciones) en su `*.Contracts` cuando Reporting las necesite. Prohibido el acceso directo a tablas ajenas.
@@ -504,6 +591,8 @@ Todo módulo nuevo sigue este patrón (implementado primero en Inventario):
 | GET/POST/PUT/PATCH | `/api/v1/units` · `/{id}` · `/{id}/status` | `inventory.units.read` / `.write` |
 | GET/POST/PUT/PATCH | `/api/v1/categories` · `/{id}` · `/{id}/status` | `inventory.categories.read` / `.write` |
 | GET/POST/PUT/PATCH | `/api/v1/products` · `/{id}` · `/{id}/status` | `inventory.products.read` / `.write` |
+| GET/POST/PUT/PATCH | `/api/v1/suppliers` · `/{id}` · `/{id}/status` | `purchases.suppliers.read` / `.write` |
+| GET | `/api/v1/suppliers/identification-types` | `purchases.suppliers.read` |
 | GET | `/api/v1/tenant/taxpayers` | `platform.taxpayers.read` |
 
 Los modelos del escritorio (`ERP.Frontend.Shared/Api/ApiModels.cs`) se mantienen sincronizados manualmente con estos DTO.

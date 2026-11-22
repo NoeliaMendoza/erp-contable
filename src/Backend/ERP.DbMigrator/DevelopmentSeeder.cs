@@ -41,6 +41,7 @@ public sealed class DevelopmentSeeder(DatabaseMigrator migrator, string? demoPas
     public const string AnaEmail = "ana.admin@demo.local";
     public const string BrunoEmail = "bruno.admin@demo.local";
     public const string CarlaEmail = "carla.contadora@demo.local";
+    public static readonly Guid MainWarehouseId = Guid.Parse("0195a000-0000-7000-8000-00000000f001");
 
     public async Task SeedAsync(CancellationToken cancellationToken)
     {
@@ -104,6 +105,8 @@ public sealed class DevelopmentSeeder(DatabaseMigrator migrator, string? demoPas
         InventoryPermissions.UnitsRead,
         InventoryPermissions.ProductsRead,
         InventoryPermissions.CategoriesRead,
+        SalesPermissions.CustomersRead,
+        PurchasesPermissions.SuppliersRead,
     ];
 
     /// <summary>Catálogo ficticio mínimo (ejemplo del plan: cuadernos a USD 5) para la empresa que vende productos.</summary>
@@ -118,13 +121,18 @@ public sealed class DevelopmentSeeder(DatabaseMigrator migrator, string? demoPas
             var und = Unit.Create(Guid.CreateVersion7(), tenantId, "UND", "Unidad", now, null);
             var hora = Unit.Create(Guid.CreateVersion7(), tenantId, "HORA", "Hora", now, null);
             db.Units.AddRange(und, hora);
-            db.Products.AddRange(
-                Product.Create(Guid.CreateVersion7(), tenantId,
+            var cuaderno = Product.Create(Guid.CreateVersion7(), tenantId,
                     new ProductData("CUAD-001", "Cuaderno universitario 100 hojas", ProductKind.Product, und.Id, 5.00m,
-                        VatTreatment.Standard, Barcode: "7860000000017", Cost: 3.20m, MinStock: 10m), now, null),
-                Product.Create(Guid.CreateVersion7(), tenantId,
+                        VatTreatment.ZeroRated, Barcode: "7860000000017", Cost: 3.00m, MinStock: 10m), now, null);
+            var servicio = Product.Create(Guid.CreateVersion7(), tenantId,
                     new ProductData("SRV-INST", "Servicio de instalación", ProductKind.Service, hora.Id, 25.00m, VatTreatment.Standard),
-                    now, null));
+                    now, null);
+            db.Products.AddRange(cuaderno, servicio);
+            await db.SaveChangesAsync(ct);
+
+            var stock = StockBalance.Create(tenantId, cuaderno.Id, MainWarehouseId);
+            stock.Adjust(10m);
+            db.StockBalances.Add(stock);
             await db.SaveChangesAsync(ct);
         }
 

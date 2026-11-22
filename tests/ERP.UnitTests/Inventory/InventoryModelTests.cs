@@ -220,4 +220,39 @@ public sealed class InventoryModelTests
         Assert.Equal(expectedSize, request.SafePageSize);
         Assert.Equal((expectedPage - 1) * expectedSize, request.Skip);
     }
+
+    [Fact]
+    public void Stock_salida_no_deja_cantidad_negativa()
+    {
+        var stock = StockBalance.Create(Tenant, Guid.NewGuid(), Guid.NewGuid());
+        stock.Adjust(10m);
+
+        stock.Adjust(-4m);
+
+        Assert.Equal(6m, stock.QuantityOnHand);
+        Assert.Equal("stock_insufficient", Assert.Throws<DomainException>(() => stock.Adjust(-7m)).Code);
+        Assert.Equal(6m, stock.QuantityOnHand);
+    }
+
+    [Fact]
+    public void Stock_respeta_cantidad_reservada()
+    {
+        var stock = StockBalance.Create(Tenant, Guid.NewGuid(), Guid.NewGuid());
+        stock.Adjust(10m);
+        stock.Reserve(4m);
+
+        Assert.Equal("stock_insufficient", Assert.Throws<DomainException>(() => stock.Adjust(-7m)).Code);
+        stock.Adjust(-6m);
+        Assert.Equal(4m, stock.QuantityOnHand);
+    }
+
+    [Fact]
+    public void Movimiento_de_servicio_no_modifica_stock()
+    {
+        var product = Product.Create(Guid.NewGuid(), Tenant,
+            Data(ProductKind.Service), Now, null);
+
+        Assert.False(product.TracksInventory);
+        Assert.False(product.Kind == ProductKind.Product);
+    }
 }

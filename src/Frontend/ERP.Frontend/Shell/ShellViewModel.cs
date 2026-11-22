@@ -42,6 +42,18 @@ public sealed partial class ShellViewModel : ViewModelBase
                 MenuItems.Add(new MenuEntry("Productos y servicios", pages.InventoryProducts));
             }
 
+            if (session.EnabledFeatures.Contains("sales"))
+            {
+                if (session.Can("sales.customers.read"))
+                {
+                    MenuItems.Add(new MenuEntry("Clientes", pages.Customers));
+                }
+                if (session.Can("sales.invoices.issue") || session.Can("sales.invoices.read"))
+                {
+                    MenuItems.Add(new MenuEntry("Ventas", pages.Sales));
+                }
+            }
+
             if (session.Can("inventory.categories.read"))
             {
                 MenuItems.Add(new MenuEntry("Categorías", pages.InventoryCategories));
@@ -56,6 +68,11 @@ public sealed partial class ShellViewModel : ViewModelBase
         if (session.EnabledFeatures.Contains("accounting") && session.Can("accounting.accounts.read"))
         {
             MenuItems.Add(new MenuEntry("Plan de cuentas", pages.AccountingAccounts));
+        }
+
+        if (session.EnabledFeatures.Contains("purchases") && session.Can("purchases.suppliers.read"))
+        {
+            MenuItems.Add(new MenuEntry("Proveedores", pages.PurchaseSuppliers));
         }
 
         foreach (var module in FrontendModules.Pending.Where(m => session.EnabledFeatures.Contains(m.FeatureCode)))

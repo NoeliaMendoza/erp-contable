@@ -1,5 +1,6 @@
 using ERP.BuildingBlocks.Security;
 using ERP.Infrastructure.Persistence;
+using ERP.Modules.Accounting.Contracts;
 using ERP.Modules.Accounting.Data;
 using ERP.Modules.Accounting.Services;
 using ERP.Modules.Accounting.Validators;
@@ -11,7 +12,7 @@ namespace ERP.Modules.Accounting;
 
 /// <summary>
 /// Módulo Contabilidad (Romero). ACC-01: CRUD del plan de cuentas con persistencia y aislamiento por empresa.
-/// El dominio de asientos existente se conserva; su persistencia e IAccountingPostingService siguen pendientes.
+/// Incluye además el registro idempotente de asientos usado por Ventas.
 /// </summary>
 public static class AccountingModule
 {
@@ -23,6 +24,7 @@ public static class AccountingModule
     {
         services.AddControllers().AddApplicationPart(typeof(AccountingModule).Assembly);
         services.AddModuleDbContext<AccountingDbContext>(configuration, AccountingDbContext.Schema);
+        services.AddScoped<IAccountingPostingService, AccountingPostingService>();
         services.AddScoped<AccountService>();
         services.AddValidatorsFromAssemblyContaining<SaveAccountRequestValidator>();
         services.AddSingleton<IPermissionProvider, AccountingPermissionProvider>();
