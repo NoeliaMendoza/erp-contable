@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using ERP.BuildingBlocks.Paging;
 using ERP.DbMigrator;
 using ERP.IntegrationTests.Infrastructure;
 using ERP.Modules.Sales.Dtos;
@@ -30,6 +31,24 @@ public sealed class CustomersApiTests(PostgresFixture db) : IAsyncLifetime
     }
 
     public async ValueTask DisposeAsync() => await _api.DisposeAsync();
+
+    [Fact]
+    public async Task Listado_con_clientes_responde_200_e_incluye_la_advertencia_de_identificacion()
+    {
+        // La empresa siempre tiene al menos un cliente: el listado no puede depender del orden de las pruebas.
+        var number = Random.Shared.NextInt64(1_000_000_000, 10_000_000_000).ToString(CultureInfo.InvariantCulture);
+        var created = await _ana.PostAsJsonAsync("/api/v1/customers",
+            new SaveCustomerRequest("Cedula", number, "Cliente para listar", null, null, null), Ct);
+        Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+        var expected = (await created.Content.ReadFromJsonAsync<CustomerResponse>(Ct))!;
+
+        var response = await _ana.GetAsync($"/api/v1/customers?search={number}", Ct);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var page = (await response.Content.ReadFromJsonAsync<PagedResult<CustomerResponse>>(Ct))!;
+        var listed = Assert.Single(page.Items, c => c.Id == expected.Id);
+        Assert.Equal(expected.IdentificationWarning, listed.IdentificationWarning);
+    }
 
     [Fact]
     public async Task Cliente_se_crea_paginado_editado_y_desactivado()
