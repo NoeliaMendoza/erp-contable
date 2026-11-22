@@ -1,0 +1,75 @@
+# Análisis de calidad con SonarQube (Cloud o Server). Informativo: no bloquea la fusión.
+# - Cada push a main analiza la rama principal.
+# - Cada PR del mismo repositorio se analiza y SonarQube Cloud muestra el resultado en el PR.
+#   (El análisis de PR requiere SonarQube Cloud; los PR desde forks no reciben el secreto y se omiten.)
+# Configuración en Settings → Secrets and variables → Actions:
+#   secreto SONAR_TOKEN; variables SONAR_PROJECT_KEY y SONAR_ORGANIZATION (Cloud) o SONAR_HOST_URL (Server).
+# Sin SONAR_PROJECT_KEY el job se omite.
+name: SonarQube
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sonarqube-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze:
+    name: Análisis SonarQube
+    if: >-
+      vars.SONAR_PROJECT_KEY != '' && (
+        (github.event_name != 'pull_request' && github.ref == 'refs/heads/main') ||
+        (github.event_name == 'pull_request' && vars.SONAR_ORGANIZATION != '' &&
+         github.event.pull_request.head.repo.full_name == github.repository))
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Instalar SonarScanner para .NET
+        run: dotnet tool install dotnet-sonarscanner --tool-path "$RUNNER_TEMP/sonar" --version 12.1.0
+
+      - name: Analizar la solución
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_PROJECT_KEY: ${{ vars.SONAR_PROJECT_KEY }}
+          SONAR_ORGANIZATION: ${{ vars.SONAR_ORGANIZATION }}
+          SONAR_REGION: ${{ vars.SONAR_REGION }}
+          SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL }}
+        run: |
+          if [[ -z "$SONAR_TOKEN" ]]; then
+            echo '::error::Configura el secreto SONAR_TOKEN en el repositorio.'
+            exit 1
+          fi
+
+          scanner="$RUNNER_TEMP/sonar/dotnet-sonarscanner"
+          args=("/k:$SONAR_PROJECT_KEY" "/d:sonar.token=$SONAR_TOKEN")
+          if [[ -n "$SONAR_ORGANIZATION" ]]; then
+            args+=("/o:$SONAR_ORGANIZATION")
+            if [[ -n "$SONAR_REGION" ]]; then
+              args+=("/d:sonar.region=$SONAR_REGION")
+            fi
+          elif [[ -n "$SONAR_HOST_URL" ]]; then
+            args+=("/d:sonar.host.url=$SONAR_HOST_URL")
+          else
+            echo '::error::Configura SONAR_ORGANIZATION para Cloud o SONAR_HOST_URL para Server.'
+            exit 1
+          fi
+
+          "$scanner" begin "${args[@]}"
+          dotnet build ERP.slnx --configuration Release --no-incremental
+          "$scanner" end "/d:sonar.token=$SONAR_TOKEN"
