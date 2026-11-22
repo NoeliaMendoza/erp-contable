@@ -43,6 +43,9 @@ jobs:
       - name: Instalar SonarScanner para .NET
         run: dotnet tool install dotnet-sonarscanner --tool-path "$RUNNER_TEMP/sonar" --version 12.1.0
 
+      - name: Instalar dotnet-coverage
+        run: dotnet tool install dotnet-coverage --tool-path "$RUNNER_TEMP/sonar" --version 18.12.0
+
       - name: Analizar la solución
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
@@ -57,7 +60,8 @@ jobs:
           fi
 
           scanner="$RUNNER_TEMP/sonar/dotnet-sonarscanner"
-          args=("/k:$SONAR_PROJECT_KEY" "/d:sonar.token=$SONAR_TOKEN")
+          report="$RUNNER_TEMP/coverage.xml"
+          args=("/k:$SONAR_PROJECT_KEY" "/d:sonar.token=$SONAR_TOKEN" "/d:sonar.cs.vscoveragexml.reportsPaths=$report")
           if [[ -n "$SONAR_ORGANIZATION" ]]; then
             args+=("/o:$SONAR_ORGANIZATION")
             if [[ -n "$SONAR_REGION" ]]; then
@@ -72,4 +76,6 @@ jobs:
 
           "$scanner" begin "${args[@]}"
           dotnet build ERP.slnx --configuration Release --no-incremental
+          "$RUNNER_TEMP/sonar/dotnet-coverage" collect "dotnet test --solution ERP.slnx --configuration Release --no-build" --output-format xml --output "$report"
+          test -s "$report"
           "$scanner" end "/d:sonar.token=$SONAR_TOKEN"

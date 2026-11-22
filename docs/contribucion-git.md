@@ -28,6 +28,7 @@ Commits: `tipo(modulo): descripción` — `feat`, `fix`, `test`, `docs`, `refact
 
 - Requerir PR con **1 aprobación** de otra persona y conversaciones resueltas.
 - Requerir check **CI / Compilar, verificar y probar**.
+- Cuando GitHub registre la primera ejecución del bot, agregar **Tarea vinculada** como check requerido.
 - Bloquear force push y eliminación.
 - Activar CODEOWNERS cuando se completen los usuarios reales en `.github/CODEOWNERS`.
 - Activar *Secret scanning* y *Dependabot alerts* si están disponibles.
@@ -50,3 +51,35 @@ Commits: `tipo(modulo): descripción` — `feat`, `fix`, `test`, `docs`, `refact
 
 Compila sin advertencias · pruebas pertinentes (dominio/integración/aislamiento) · permisos y tenant probados ·
 migración revisada · sin secretos · documentación actualizada · PR aprobado y CI verde.
+
+## Formato y pruebas antes de cada push
+
+VS Code formatea los archivos C# al guardar con la extensión C# que instala C# Dev Kit.
+Antes de cada push, abra Docker Desktop y ejecute desde la raíz del repositorio:
+
+```powershell
+docker info
+dotnet format ERP.slnx
+dotnet test --solution ERP.slnx
+```
+
+Testcontainers crea y elimina un PostgreSQL temporal. Para correr solo integración, use
+`dotnet test --project tests/ERP.IntegrationTests`. Estas pruebas no necesitan iniciar
+Docker Compose ni conectarse a Neon. Cree los datos que necesita cada prueba dentro de
+ella para que pueda ejecutarse de forma individual.
+
+## SonarQube Cloud
+
+En el repositorio de GitHub, abra **Settings → Secrets and variables → Actions**.
+Use el secreto `SONAR_TOKEN` con permiso de análisis y las variables
+`SONAR_PROJECT_KEY` y `SONAR_ORGANIZATION` con las claves del proyecto y la
+organización en SonarQube Cloud. En el primer análisis, verifique en el log
+que el escáner importe `coverage.xml` y confirme la cobertura en el proyecto.
+
+Para revisar las alertas del issue #41, abra cada hallazgo y confirme su ubicación
+antes de cambiarlo a **False positive**. En S2068, documente que
+`infrastructure/postgres/init/01-roles.sh` lee los valores desde
+`ERP_MIGRATOR_PASSWORD` y `ERP_APP_PASSWORD`, y que los nombres de parámetros de
+`psql` no contienen credenciales. Para S1313, confirme que la dirección IP
+pertenece a datos de prueba. Para S5332, confirme que el protocolo sin cifrar
+aparece en una URL de prueba y que esa URL no se usa para transmitir datos reales.
