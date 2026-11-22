@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
@@ -54,7 +55,7 @@ public sealed class CustomersApiTests(PostgresFixture db) : IAsyncLifetime
     [Fact]
     public async Task Duplicado_responde_409_y_el_mismo_documento_en_otro_tenant_se_permite()
     {
-        var number = Guid.NewGuid().ToString("N")[..10];
+        var number = Random.Shared.NextInt64(1_000_000_000, 10_000_000_000).ToString(CultureInfo.InvariantCulture);
         var request = new SaveCustomerRequest("Cedula", number, "Cliente uno", null, null, null);
         var first = await _ana.PostAsJsonAsync("/api/v1/customers", request, Ct);
         var duplicate = await _ana.PostAsJsonAsync("/api/v1/customers", request, Ct);
@@ -74,7 +75,7 @@ public sealed class CustomersApiTests(PostgresFixture db) : IAsyncLifetime
         var read = await _carlaPacifico.GetAsync("/api/v1/customers", Ct);
         Assert.Equal(HttpStatusCode.OK, read.StatusCode);
 
-        var number = Guid.NewGuid().ToString("N")[..10];
+        var number = Random.Shared.NextInt64(1_000_000_000, 10_000_000_000).ToString(CultureInfo.InvariantCulture);
         var write = await _carlaPacifico.PostAsJsonAsync("/api/v1/customers",
             new SaveCustomerRequest("Pasaporte", "P-" + number, "No permitido", null, null, null), Ct);
         Assert.Equal(HttpStatusCode.Forbidden, write.StatusCode);
@@ -83,7 +84,7 @@ public sealed class CustomersApiTests(PostgresFixture db) : IAsyncLifetime
     [Fact]
     public async Task Id_de_cliente_de_otra_empresa_responde_404()
     {
-        var number = Guid.NewGuid().ToString("N")[..10];
+        var number = Random.Shared.NextInt64(1_000_000_000, 10_000_000_000).ToString(CultureInfo.InvariantCulture);
         var created = await _bruno.PostAsJsonAsync("/api/v1/customers",
             new SaveCustomerRequest("Cedula", number, "Cliente Pacífico", null, null, null), Ct);
         var customer = (await created.Content.ReadFromJsonAsync<CustomerResponse>(Ct))!;
