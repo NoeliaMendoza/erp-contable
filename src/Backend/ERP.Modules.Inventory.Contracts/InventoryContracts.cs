@@ -108,10 +108,12 @@ public interface IProductCatalog
     Task<IReadOnlyList<ProductSummary>> GetByIdsAsync(IReadOnlyCollection<Guid> productIds, CancellationToken cancellationToken);
 }
 
+/// <summary>Bodega de la empresa activa. Cada empresa tiene una sola bodega principal (<c>IsDefault</c>).</summary>
+public sealed record WarehouseSummary(Guid WarehouseId, string Code, string Name, bool IsDefault, bool IsActive);
+
 /// <summary>
 /// Consulta de existencias de la empresa activa. Sirve para mostrar disponibilidad; no garantiza el stock al
-/// confirmar: eso lo valida <see cref="IInventoryMovementService"/>.
-/// INV-03 (#15) agrega la bodega principal por empresa y la consulta de varios artículos (ACUERDO-01).
+/// confirmar: eso lo valida <see cref="IInventoryMovementService"/>. Estado: implementado en INV-03 (#15).
 /// </summary>
 public interface IStockQueryService
 {
@@ -120,13 +122,25 @@ public interface IStockQueryService
     /// o si el artículo/bodega no pertenece al tenant; quien consulta interpreta null como 0 disponible.
     /// </summary>
     Task<StockLevel?> GetStockAsync(Guid productId, Guid warehouseId, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Existencias de varios artículos en una bodega (pantalla de venta). Solo devuelve los artículos con saldo;
+    /// los que faltan se interpretan como 0 disponible.
+    /// </summary>
+    Task<IReadOnlyList<StockLevel>> GetStocksAsync(IReadOnlyCollection<Guid> productIds, Guid warehouseId, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Bodega principal de la empresa activa. Si la empresa todavía no tiene una, se crea en ese momento
+    /// (código <c>PRINCIPAL</c>). Compras y Ventas guardan en su documento la bodega que usaron.
+    /// </summary>
+    Task<WarehouseSummary> GetDefaultWarehouseAsync(CancellationToken cancellationToken);
 }
 
 /// <summary>
 /// Único camino para que Compras y Ventas muevan stock; ningún módulo inserta en tablas de Inventario.
 /// Sin stock negativo, idempotente por empresa y clave, con control de concurrencia; participa en la transacción
 /// del caso de uso que lo invoca (no hace commit propio). Reglas completas: docs/contratos-modulos.md, ACUERDO-01 (#11).
-/// Estado: implementación inicial integrada en el PR #30; INV-03 (#15) completa costo promedio, bodegas y validaciones.
+/// Estado: implementado en INV-03 (#15): costo promedio, bodegas, bloqueo del saldo y códigos de error de ACUERDO-01.
 /// </summary>
 public interface IInventoryMovementService
 {

@@ -393,13 +393,12 @@ Los identificadores ajenos responden `404`; sin sesión `401`; sin permiso o emp
 
 ## Inventory.Contracts (Mendoza)
 - `IProductCatalog.GetByIdsAsync`: **implementado** (INV-01). Solo artículos de la empresa activa; incluye `VatTreatment` (Ventas resuelve el código SRI y el porcentaje vigente con `TaxRateCatalog`), `TracksInventory` y `Barcode`; detalle en [modulos/inventario.md](modulos/inventario.md).
-- `IStockQueryService.GetStockAsync` e `IInventoryMovementService.RegisterAsync`: reglas en ACUERDO-01 (#11), abajo.
-  Hay una **implementación inicial** integrada en el PR #30 (sin stock negativo e idempotente); INV-03 (#15) la completa
-  según el acuerdo. Las diferencias pendientes están en «Estado de la implementación».
+- `IStockQueryService` (`GetStockAsync`, `GetStocksAsync`, `GetDefaultWarehouseAsync`) e `IInventoryMovementService.RegisterAsync`:
+  **implementados** en INV-03 (#15) según ACUERDO-01 (#11), abajo. Ver «Estado de la implementación».
 
 ## Inventory.Contracts — ACUERDO-01 (#11)
 
-**Estado: propuesta de Mendoza para revisión de Compras (Torres) y Ventas (Casas).** Define cómo esos módulos
+**Estado: acordado e implementado en INV-03 (#15).** Define cómo Compras (Torres) y Ventas (Casas)
 piden una entrada o salida de stock. Reemplaza la sección «ACUERDO-04» que se integró en el PR #30: era el mismo
 tema con otro número; de ella se conservan la política sin stock negativo, la idempotencia, la consulta de existencias
 y el fallo completo. Los importes de costo que devuelve Inventario son los que usan los asientos de ACUERDO-02 (#12).
@@ -534,21 +533,22 @@ borran: una corrección futura será un movimiento nuevo enlazado al original, i
 5. Misma clave e idempotencia que ACUERDO-02.
 6. Orden documento → stock → asiento en una sola transacción.
 
-### Estado de la implementación (PR #30)
+### Estado de la implementación (INV-03, #15)
 
-El PR #30 integró una primera versión de `InventoryStockService` (movimientos y saldos) y su uso desde Ventas.
-Ya cumple: sin stock negativo, idempotencia por clave dentro de la empresa y omisión de servicios en la salida.
-INV-03 (#15) la ajusta a este acuerdo; hasta entonces **no se habilita la confirmación integrada** de compras y ventas.
+`InventoryStockService` cumple este acuerdo: costo promedio móvil, bodegas con principal por empresa, los
+códigos `inventory_*` de la tabla de errores, 409 ante la misma clave con otros datos y rechazo de ajustes y
+transferencias. **Concurrencia:** los saldos del movimiento se bloquean (`SELECT … FOR UPDATE`, en orden de artículo)
+y la misma clave se serializa con `pg_advisory_xact_lock`; la base además tiene `CHECK (quantity_on_hand >= 0)`.
 
-| Tema | Hoy en `main` | Según ACUERDO-01 (INV-03) |
+Ventas ya llama con `sales:invoice:<id>`, sin costo, una línea por artículo, y usa `TotalCost` como costo de ventas.
+
+Sigue pendiente, fuera de INV-03:
+
+| Tema | Hoy | Dónde se resuelve |
 |---|---|---|
-| Costo de la salida | Ventas envía el costo de la ficha (`ProductSummary.Cost`) y calcula ella el costo de ventas | Inventario calcula el costo promedio y lo devuelve en `TotalCost`; Ventas usa ese valor en el asiento |
-| Bodegas | `WarehouseId` sin catálogo de bodegas | Tabla de bodegas con bodega principal por empresa y `GetDefaultWarehouseAsync` |
-| Artículos sin control | Se omiten en silencio | El origen no los envía; si llegan, `inventory_product_not_tracked` |
-| Reintento con otro contenido | Devuelve el movimiento original | 409 `inventory_idempotency_conflict` |
-| Ajuste y transferencia | Aceptados | Rechazados hasta otro acuerdo |
-| Códigos de error | `movement_*`, `stock_*` | `inventory_*` de la tabla de errores |
-| Cuentas del asiento de venta | Nombres de cuenta («Costo de ventas», «Inventario») | Códigos del plan de la empresa (ACUERDO-02) |
+| Transacción compartida | Cada `DbContext` abre su propia conexión: el movimiento puede confirmarse aunque luego falle el asiento | PLAT-03 (#35) |
+| Cuentas del asiento de venta | Nombres de cuenta («Costo de ventas», «Inventario») | Códigos del plan de la empresa (ACUERDO-02, SAL-02) |
+| Bodega de la venta | Ventas recibe `WarehouseId` en la solicitud | Usar `GetDefaultWarehouseAsync` y guardarla en el documento (SAL-02) |
 
 ## Tributario (`ERP.Tributario`)
 - `EcuadorIdValidator` (sintáctico), `TaxRateCatalog` / `ITaxRateCatalogProvider` (tarifas por vigencia, nunca constantes), contratos SRI (`ISriGateway`, `IElectronicDocumentSigner`, `IAccessKeyGenerator`, `IElectronicDocumentXmlBuilder`).

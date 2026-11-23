@@ -11,8 +11,8 @@ using Microsoft.Extensions.DependencyInjection;
 namespace ERP.Modules.Inventory;
 
 /// <summary>
-/// Módulo Inventario (responsable: Mendoza). Estado: catálogo de unidades, categorías y productos/servicios <b>implementado</b>;
-/// existencias, movimientos y kardex <b>pendientes</b> (INV-02 en adelante).
+/// Módulo Inventario (responsable: Mendoza). Estado: catálogo de unidades, categorías y productos/servicios (INV-01) y
+/// bodegas, entradas, salidas, existencias y kardex con costo promedio (INV-03) <b>implementados</b>.
 /// </summary>
 public static class InventoryModule
 {
@@ -27,9 +27,12 @@ public static class InventoryModule
         services.AddScoped<UnitService>();
         services.AddScoped<ProductService>();
         services.AddScoped<CategoryService>();
+        services.AddScoped<WarehouseService>();
+        services.AddScoped<StockReportService>();
         services.AddScoped<IProductCatalog, ProductCatalog>();
-        services.AddScoped<IStockQueryService, InventoryStockService>();
-        services.AddScoped<IInventoryMovementService, InventoryStockService>();
+        services.AddScoped<InventoryStockService>();
+        services.AddScoped<IStockQueryService>(sp => sp.GetRequiredService<InventoryStockService>());
+        services.AddScoped<IInventoryMovementService>(sp => sp.GetRequiredService<InventoryStockService>());
         services.AddValidatorsFromAssemblyContaining<SaveUnitRequestValidator>();
         services.AddSingleton<IPermissionProvider, InventoryPermissionProvider>();
         return services;
@@ -45,9 +48,12 @@ public static class InventoryPermissions
     public const string CategoriesRead = "inventory.categories.read";
     public const string CategoriesWrite = "inventory.categories.write";
 
-    // Siguientes entregas (todavía sin endpoints).
     public const string WarehousesManage = "inventory.warehouses.manage";
+
+    /// <summary>Reservado: los movimientos solo los registran Compras y Ventas por contrato, sin endpoint propio.</summary>
     public const string MovementsRegister = "inventory.movements.register";
+
+    /// <summary>Bodegas, existencias y kardex (lectura).</summary>
     public const string KardexRead = "inventory.kardex.read";
 }
 

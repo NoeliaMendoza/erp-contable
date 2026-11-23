@@ -5,6 +5,7 @@ using ERP.Modules.Inventory;
 using ERP.Modules.Inventory.Contracts;
 using ERP.Modules.Inventory.Data;
 using ERP.Modules.Inventory.Models;
+using ERP.Modules.Inventory.Services;
 using ERP.Modules.Platform;
 using ERP.Modules.Platform.Models;
 using ERP.Modules.Purchases;
@@ -42,6 +43,9 @@ public sealed class DevelopmentSeeder(DatabaseMigrator migrator, string? demoPas
     public const string BrunoEmail = "bruno.admin@demo.local";
     public const string CarlaEmail = "carla.contadora@demo.local";
     public static readonly Guid MainWarehouseId = Guid.Parse("0195a000-0000-7000-8000-00000000f001");
+
+    /// <summary>Documento ficticio del saldo inicial de demostración (no existe en Compras).</summary>
+    public static readonly Guid OpeningReceiptId = Guid.Parse("0195a000-0000-7000-8000-00000000f101");
 
     public async Task SeedAsync(CancellationToken cancellationToken)
     {
@@ -105,6 +109,7 @@ public sealed class DevelopmentSeeder(DatabaseMigrator migrator, string? demoPas
         InventoryPermissions.UnitsRead,
         InventoryPermissions.ProductsRead,
         InventoryPermissions.CategoriesRead,
+        InventoryPermissions.KardexRead,
         SalesPermissions.CustomersRead,
         PurchasesPermissions.SuppliersRead,
     ];
@@ -130,10 +135,14 @@ public sealed class DevelopmentSeeder(DatabaseMigrator migrator, string? demoPas
             db.Products.AddRange(cuaderno, servicio);
             await db.SaveChangesAsync(ct);
 
-            var stock = StockBalance.Create(tenantId, cuaderno.Id, MainWarehouseId);
-            stock.Adjust(10m);
-            db.StockBalances.Add(stock);
+            db.Warehouses.Add(Warehouse.Create(MainWarehouseId, tenantId, Warehouse.DefaultCode, Warehouse.DefaultName, isDefault: true, now, null));
             await db.SaveChangesAsync(ct);
+
+            // El stock nunca se digita: el saldo inicial entra como una recepción de compra ficticia (10 a USD 3).
+            await new InventoryStockService(db, session, TimeProvider.System).RegisterAsync(new InventoryMovementRequest(
+                $"purchases:receipt:{OpeningReceiptId:D}", "purchases", "receipt", OpeningReceiptId, MainWarehouseId,
+                InventoryMovementKind.Entrada, DateOnly.FromDateTime(now.UtcDateTime),
+                [new InventoryMovementLine(cuaderno.Id, 10m, 3.00m)]), ct);
         }
 
         // Categorías: aparte, para que también se agreguen en bases sembradas antes de que existieran (ramas de Neon).
