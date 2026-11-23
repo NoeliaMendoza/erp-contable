@@ -54,12 +54,18 @@ migración revisada · sin secretos · documentación actualizada · PR aprobado
 
 ## Formato y pruebas antes de cada push
 
-VS Code formatea los archivos C# al guardar con la extensión C# que instala C# Dev Kit.
+El formato es automático: no hace falta ejecutar `dotnet format` a mano.
+
+- VS Code formatea y ordena los `using` al guardar (`.vscode/settings.json`).
+- Al compilar por primera vez (`dotnet build`), Git activa el hook `.githooks/pre-commit`. Desde
+  entonces, cada `git commit` formatea los `.cs` agregados con las mismas reglas que revisa el CI
+  y los vuelve a agregar al commit. Tarda unos segundos. Si un archivo tiene cambios sin agregar,
+  el hook no lo toca y lo avisa. Para saltarlo una vez: `git commit --no-verify`.
+
 Antes de cada push, abra Docker Desktop y ejecute desde la raíz del repositorio:
 
 ```powershell
 docker info
-dotnet format ERP.slnx
 dotnet test --solution ERP.slnx
 ```
 
