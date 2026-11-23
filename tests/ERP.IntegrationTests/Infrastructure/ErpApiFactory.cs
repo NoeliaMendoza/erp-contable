@@ -12,6 +12,14 @@ public sealed class ErpApiFactory(PostgresFixture database) : WebApplicationFact
         builder.UseEnvironment("Testing");
         builder.UseSetting("ConnectionStrings:ErpRuntime", database.AppConnectionString);
         builder.UseSetting("Authentication:DevelopmentHeader:Enabled", "true");
+
+        // Igual que en Development: si un servicio registrado no puede construirse (falta una dependencia),
+        // la API no arranca y todas las pruebas fallan, en lugar de descubrirlo al ejecutar la aplicación.
+        builder.UseDefaultServiceProvider(options =>
+        {
+            options.ValidateOnBuild = true;
+            options.ValidateScopes = true;
+        });
     }
 
     /// <summary>Cliente autenticado como un usuario semilla y, opcionalmente, con una empresa seleccionada.</summary>
