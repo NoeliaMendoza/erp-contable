@@ -35,14 +35,20 @@ public sealed partial class StockViewModel : ViewModelBase
     public partial string? Search { get; set; }
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(CanGoPrevious))]
-    [NotifyPropertyChangedFor(nameof(CanGoNext))]
     public partial int Page { get; set; } = 1;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(CanGoPrevious))]
-    [NotifyPropertyChangedFor(nameof(CanGoNext))]
     public partial int TotalPages { get; set; } = 1;
+
+    partial void OnPageChanged(int value) => NotifyPaging();
+
+    partial void OnTotalPagesChanged(int value) => NotifyPaging();
+
+    private void NotifyPaging()
+    {
+        OnPropertyChanged(nameof(CanGoPrevious));
+        OnPropertyChanged(nameof(CanGoNext));
+    }
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsEmpty))]
@@ -126,36 +132,26 @@ public sealed partial class StockViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private Task SearchNowAsync()
-    {
-        Page = 1;
-        return LoadAsync();
-    }
+    private Task SearchNowAsync() => GoToPageAsync(1);
 
     [RelayCommand]
     private void ClearSearch() => Search = null;
 
     [RelayCommand]
-    private Task NextPageAsync()
-    {
-        if (Page >= TotalPages)
-        {
-            return Task.CompletedTask;
-        }
-
-        Page++;
-        return LoadAsync();
-    }
+    private Task NextPageAsync() => GoToPageAsync(Page + 1);
 
     [RelayCommand]
-    private Task PreviousPageAsync()
+    private Task PreviousPageAsync() => GoToPageAsync(Page - 1);
+
+    private Task GoToPageAsync(int page)
     {
-        if (Page <= 1)
+        var target = Math.Clamp(page, 1, Math.Max(TotalPages, 1));
+        if (target == Page && page != 1)
         {
             return Task.CompletedTask;
         }
 
-        Page--;
+        Page = target;
         return LoadAsync();
     }
 

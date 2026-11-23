@@ -62,6 +62,8 @@ jobs:
           scanner="$RUNNER_TEMP/sonar/dotnet-sonarscanner"
           report="$RUNNER_TEMP/coverage.xml"
           args=("/k:$SONAR_PROJECT_KEY" "/d:sonar.token=$SONAR_TOKEN" "/d:sonar.cs.vscoveragexml.reportsPaths=$report")
+          # Las migraciones de EF son código generado: no cuentan como duplicación (igual que .sonarcloud.properties).
+          args+=("/d:sonar.cpd.exclusions=**/Migrations/**")
           if [[ -n "$SONAR_ORGANIZATION" ]]; then
             args+=("/o:$SONAR_ORGANIZATION")
             if [[ -n "$SONAR_REGION" ]]; then

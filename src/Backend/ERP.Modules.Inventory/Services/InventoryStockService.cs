@@ -259,12 +259,10 @@ public sealed class InventoryStockService(InventoryDbContext db, ITenantContext 
                 """)
             .ToDictionaryAsync(s => s.ProductId, ct);
 
-        foreach (var id in ids.Where(id => !locked.ContainsKey(id)))
-        {
-            // Solo pasa en una salida: sin saldo no hay existencia.
-            throw new DomainException("inventory_insufficient_stock", $"No hay existencia del artículo {id} en la bodega.");
-        }
-
-        return locked;
+        // Solo pasa en una salida: sin saldo no hay existencia.
+        var missing = Array.Find(ids, id => !locked.ContainsKey(id));
+        return missing == Guid.Empty
+            ? locked
+            : throw new DomainException("inventory_insufficient_stock", $"No hay existencia del artículo {missing} en la bodega.");
     }
 }
