@@ -1,0 +1,131 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:ERP.Frontend.Modules.Inventory.ViewModels"
+             xmlns:inv="using:ERP.Frontend.Modules.Inventory"
+             xmlns:controls="using:ERP.Frontend.Shared.Controls"
+             x:Class="ERP.Frontend.Modules.Inventory.Views.StockView"
+             x:DataType="vm:StockViewModel">
+  <StackPanel Spacing="16">
+    <DockPanel>
+      <Button DockPanel.Dock="Right" Content="Actualizar" Command="{Binding LoadCommand}" />
+      <TextBlock Classes="h1" Text="Existencias" />
+    </DockPanel>
+    <TextBlock Classes="muted" TextWrapping="Wrap"
+               Text="La existencia se calcula con las compras y ventas registradas; no se digita. El valor usa el costo promedio de cada artículo." />
+
+    <controls:FeedbackBar IsBusy="{Binding IsBusy}"
+                          ErrorMessage="{Binding ErrorMessage}"
+                          RetryCommand="{Binding LoadCommand}" />
+
+    <!-- Bodega y búsqueda -->
+    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+      <ComboBox Grid.Column="0" MinWidth="220" ItemsSource="{Binding Warehouses}" SelectedItem="{Binding SelectedWarehouse}"
+                AutomationProperties.Name="Bodega">
+        <ComboBox.ItemTemplate>
+          <DataTemplate x:DataType="inv:WarehouseItem">
+            <TextBlock Text="{Binding Display}" />
+          </DataTemplate>
+        </ComboBox.ItemTemplate>
+      </ComboBox>
+      <controls:SearchBox Grid.Column="1" SearchText="{Binding Search, Mode=TwoWay}"
+                          PlaceholderText="Buscar por SKU o nombre"
+                          ClearCommand="{Binding ClearSearchCommand}" />
+      <Button Grid.Column="2" Content="Buscar" Command="{Binding SearchNowCommand}" />
+    </Grid>
+
+    <!-- Existencias -->
+    <Border Classes="card">
+      <StackPanel Spacing="4">
+        <Grid ColumnDefinitions="*,2*,*,*,*,*,Auto">
+          <TextBlock Grid.Column="0" Classes="muted" Text="SKU" />
+          <TextBlock Grid.Column="1" Classes="muted" Text="Artículo" />
+          <TextBlock Grid.Column="2" Classes="muted" Text="Existencia" TextAlignment="Right" />
+          <TextBlock Grid.Column="3" Classes="muted" Text="Mínimo" TextAlignment="Right" />
+          <TextBlock Grid.Column="4" Classes="muted" Text="Costo prom." TextAlignment="Right" />
+          <TextBlock Grid.Column="5" Classes="muted" Text="Valor USD" TextAlignment="Right" />
+        </Grid>
+        <controls:EmptyState IsVisible="{Binding IsEmpty}"
+                             Title="No hay artículos con control de inventario"
+                             Message="Los productos que controlan inventario aparecen aquí, aunque todavía no tengan movimientos." />
+        <ItemsControl ItemsSource="{Binding Items}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="inv:StockItem">
+              <Grid ColumnDefinitions="*,2*,*,*,*,*,Auto" ColumnSpacing="8" Margin="0,4">
+                <TextBlock Grid.Column="0" Text="{Binding Sku}" VerticalAlignment="Center" />
+                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                  <TextBlock FontWeight="SemiBold" Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
+                  <TextBlock Classes="error small" Text="{Binding Alert}" IsVisible="{Binding BelowMinimum}" />
+                </StackPanel>
+                <TextBlock Grid.Column="2" Text="{Binding QuantityLabel}" TextAlignment="Right" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="3" Classes="muted" Text="{Binding MinimumLabel}" TextAlignment="Right" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="4" Text="{Binding AverageCost, StringFormat='{}{0:0.0000}'}" TextAlignment="Right" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="5" Text="{Binding TotalValue, StringFormat='{}{0:N2}'}" TextAlignment="Right" VerticalAlignment="Center" />
+                <Button Grid.Column="6" Content="Kardex" CommandParameter="{Binding}"
+                        Command="{Binding $parent[UserControl].((vm:StockViewModel)DataContext).ShowKardexCommand}" />
+              </Grid>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        <TextBlock Classes="muted small" Text="{Binding TotalValueLabel}" HorizontalAlignment="Right" />
+      </StackPanel>
+    </Border>
+
+    <controls:PaginationBar CurrentPage="{Binding Page}"
+                            TotalPages="{Binding TotalPages}"
+                            CanGoPrevious="{Binding CanGoPrevious}"
+                            CanGoNext="{Binding CanGoNext}"
+                            PreviousCommand="{Binding PreviousPageCommand}"
+                            NextCommand="{Binding NextPageCommand}" />
+
+    <!-- Kardex del artículo elegido -->
+    <Border Classes="card" IsVisible="{Binding HasKardex}">
+      <StackPanel Spacing="8">
+        <DockPanel>
+          <Button DockPanel.Dock="Right" Content="Cerrar" Command="{Binding CloseKardexCommand}" />
+          <StackPanel>
+            <TextBlock Classes="h2" Text="{Binding SelectedKardex.Name, StringFormat='Kardex: {0}'}" />
+            <TextBlock Classes="muted small">
+              <TextBlock.Text>
+                <MultiBinding StringFormat="{}{0} · {1} · existencia {2:0.####} · costo promedio {3:0.0000} · {4} movimientos">
+                  <Binding Path="SelectedKardex.Sku" />
+                  <Binding Path="SelectedKardex.Warehouse.Name" />
+                  <Binding Path="SelectedKardex.QuantityOnHand" />
+                  <Binding Path="SelectedKardex.AverageCost" />
+                  <Binding Path="SelectedKardex.Entries.TotalCount" />
+                </MultiBinding>
+              </TextBlock.Text>
+            </TextBlock>
+          </StackPanel>
+        </DockPanel>
+        <Grid ColumnDefinitions="*,*,*,*,*,*,*,*">
+          <TextBlock Grid.Column="0" Classes="muted" Text="Fecha" />
+          <TextBlock Grid.Column="1" Classes="muted" Text="Origen" />
+          <TextBlock Grid.Column="2" Classes="muted" Text="Entrada" TextAlignment="Right" />
+          <TextBlock Grid.Column="3" Classes="muted" Text="Salida" TextAlignment="Right" />
+          <TextBlock Grid.Column="4" Classes="muted" Text="Costo unit." TextAlignment="Right" />
+          <TextBlock Grid.Column="5" Classes="muted" Text="Total USD" TextAlignment="Right" />
+          <TextBlock Grid.Column="6" Classes="muted" Text="Saldo" TextAlignment="Right" />
+          <TextBlock Grid.Column="7" Classes="muted" Text="Promedio" TextAlignment="Right" />
+        </Grid>
+        <TextBlock Classes="muted" Text="Este artículo todavía no tiene movimientos en la bodega."
+                   IsVisible="{Binding !KardexEntries.Count}" />
+        <ItemsControl ItemsSource="{Binding KardexEntries}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="inv:KardexEntry">
+              <Grid ColumnDefinitions="*,*,*,*,*,*,*,*" Margin="0,2">
+                <TextBlock Grid.Column="0" Text="{Binding MovementDate, StringFormat='{}{0:dd/MM/yyyy}'}" />
+                <TextBlock Grid.Column="1" Text="{Binding Source}" />
+                <TextBlock Grid.Column="2" Text="{Binding InLabel}" TextAlignment="Right" />
+                <TextBlock Grid.Column="3" Text="{Binding OutLabel}" TextAlignment="Right" />
+                <TextBlock Grid.Column="4" Text="{Binding UnitCost, StringFormat='{}{0:0.0000}'}" TextAlignment="Right" />
+                <TextBlock Grid.Column="5" Text="{Binding LineCost, StringFormat='{}{0:N2}'}" TextAlignment="Right" />
+                <TextBlock Grid.Column="6" FontWeight="SemiBold" Text="{Binding BalanceLabel}" TextAlignment="Right" />
+                <TextBlock Grid.Column="7" Text="{Binding AverageLabel}" TextAlignment="Right" />
+              </Grid>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </StackPanel>
+    </Border>
+  </StackPanel>
+</UserControl>

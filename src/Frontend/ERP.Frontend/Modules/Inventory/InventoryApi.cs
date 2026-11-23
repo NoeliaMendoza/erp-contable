@@ -82,6 +82,78 @@ public sealed record VatOption(string Value, string Label)
 
 public sealed record ChangeStatus(bool IsActive);
 
+// ── Bodegas, existencias y kardex (INV-03) ─────────────────────────────────────────────────────
+
+public sealed record WarehouseItem(Guid Id, string Code, string Name, bool IsDefault, bool IsActive)
+{
+    public string Display => IsDefault ? $"{Name} (principal)" : IsActive ? Name : $"{Name} (inactiva)";
+}
+
+public sealed record StockItem(
+    Guid ProductId,
+    string Sku,
+    string Name,
+    string UnitCode,
+    bool IsActive,
+    decimal QuantityOnHand,
+    decimal QuantityReserved,
+    decimal Available,
+    decimal AverageCost,
+    decimal TotalValue,
+    decimal? MinStock,
+    bool BelowMinimum)
+{
+    public string QuantityLabel => $"{QuantityOnHand:0.####} {UnitCode}";
+
+    public string MinimumLabel => MinStock is { } min ? $"{min:0.####}" : "—";
+
+    public string Alert => BelowMinimum ? "Bajo el mínimo" : string.Empty;
+}
+
+public sealed record StockReport(WarehouseItem Warehouse, PagedResult<StockItem> Items);
+
+public sealed record KardexEntry(
+    Guid MovementId,
+    long Sequence,
+    DateOnly MovementDate,
+    DateTimeOffset RegisteredAtUtc,
+    string Kind,
+    string SourceModule,
+    string SourceDocumentType,
+    Guid SourceDocumentId,
+    decimal QuantityIn,
+    decimal QuantityOut,
+    decimal? UnitCost,
+    decimal LineCost,
+    decimal? QuantityAfter,
+    decimal? AverageCostAfter)
+{
+    public string Source => SourceModule switch
+    {
+        "purchases" => "Compra",
+        "sales" => "Venta",
+        _ => SourceModule,
+    };
+
+    public string InLabel => QuantityIn == 0 ? string.Empty : $"{QuantityIn:0.####}";
+
+    public string OutLabel => QuantityOut == 0 ? string.Empty : $"{QuantityOut:0.####}";
+
+    public string BalanceLabel => QuantityAfter is { } q ? $"{q:0.####}" : "—";
+
+    public string AverageLabel => AverageCostAfter is { } c ? $"{c:0.0000}" : "—";
+}
+
+public sealed record Kardex(
+    Guid ProductId,
+    string Sku,
+    string Name,
+    string UnitCode,
+    WarehouseItem Warehouse,
+    decimal QuantityOnHand,
+    decimal AverageCost,
+    PagedResult<KardexEntry> Entries);
+
 /// <summary>Cliente del catálogo de Inventario. Usa el cliente HTTP común (sesión, empresa y errores).</summary>
 public sealed class InventoryApi(ErpApiClient api)
 {
@@ -121,6 +193,17 @@ public sealed class InventoryApi(ErpApiClient api)
 
     public Task<ProductItem> SetProductStatusAsync(Guid id, bool isActive, CancellationToken ct = default) =>
         api.SendJsonAsync<ProductItem>(HttpMethod.Patch, $"api/v1/products/{id}/status", new ChangeStatus(isActive), ct);
+
+    public Task<List<WarehouseItem>> ListWarehousesAsync(CancellationToken ct = default) =>
+        api.GetAsync<List<WarehouseItem>>("api/v1/warehouses", ct);
+
+    public Task<StockReport> GetStockAsync(Guid? warehouseId, int page, int pageSize, string? search, CancellationToken ct = default) =>
+        api.GetAsync<StockReport>($"api/v1/stock?{Query(page, pageSize, search, true, null)}{WarehouseQuery(warehouseId)}", ct);
+
+    public Task<Kardex> GetKardexAsync(Guid productId, Guid? warehouseId, int page, int pageSize, CancellationToken ct = default) =>
+        api.GetAsync<Kardex>($"api/v1/products/{productId:D}/kardex?page={page}&pageSize={pageSize}{WarehouseQuery(warehouseId)}", ct);
+
+    private static string WarehouseQuery(Guid? warehouseId) => warehouseId is { } id ? $"&warehouseId={id:D}" : string.Empty;
 
     internal static string Query(int page, int pageSize, string? search, bool? isActive, string? kind, Guid? categoryId = null)
     {

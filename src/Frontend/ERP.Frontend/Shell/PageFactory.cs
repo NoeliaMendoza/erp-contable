@@ -42,6 +42,9 @@ public sealed class PageFactory(ErpApiClient api, SessionState session, Frontend
     public ProductsViewModel InventoryProducts() => new(new InventoryApi(api), session);
 
     public CategoriesViewModel InventoryCategories() => new(new InventoryApi(api), session);
+
+    public StockViewModel InventoryStock() => new(new InventoryApi(api));
+
     public SalesViewModel Sales() => new(new SalesApi(api), new InventoryApi(api), session);
     public CustomersViewModel Customers() => new(new SalesApi(api), session);
     public SuppliersViewModel PurchaseSuppliers() => new(new PurchasesApi(api), session);
