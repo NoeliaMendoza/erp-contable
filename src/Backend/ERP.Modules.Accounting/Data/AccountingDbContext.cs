@@ -21,21 +21,46 @@ public sealed class AccountingDbContext(DbContextOptions<AccountingDbContext> op
         modelBuilder.HasDefaultSchema(Schema);
         modelBuilder.Entity<JournalEntryEntity>(b =>
         {
-            b.ToTable("journal_entries");
+            b.ToTable("journal_entries", t =>
+            {
+                t.HasCheckConstraint("ck_journal_entries_description", "length(btrim(description)) BETWEEN 1 AND 300");
+                t.HasCheckConstraint("ck_journal_entries_source", "length(btrim(source_module)) > 0 AND length(btrim(source_document_type)) > 0");
+                t.HasCheckConstraint("ck_journal_entries_source_document", "source_document_id <> '00000000-0000-0000-0000-000000000000'::uuid");
+            });
             b.HasAlternateKey(x => new { x.TenantId, x.Id });
             b.HasIndex(x => new { x.TenantId, x.IdempotencyKey }).IsUnique();
-            b.Property(x => x.IdempotencyKey).HasMaxLength(200).IsRequired();
-            b.Property(x => x.Description).HasMaxLength(300).IsRequired();
+
+            // Libro diario por empresa con filtro de fechas.
+            b.HasIndex(x => new { x.TenantId, x.AccountingDate, x.Id });
+
+            // Trazabilidad documento -> asiento sin leer tablas de otro módulo.
+            b.HasIndex(x => new { x.TenantId, x.SourceModule, x.SourceDocumentType, x.SourceDocumentId });
+            b.Property(x => x.IdempotencyKey).HasMaxLength(JournalEntryEntity.IdempotencyKeyMaxLength).IsRequired();
+            b.Property(x => x.Description).HasMaxLength(JournalEntryEntity.DescriptionMaxLength).IsRequired();
+            b.Property(x => x.SourceModule).HasMaxLength(JournalEntryEntity.SourceMaxLength).IsRequired();
+            b.Property(x => x.SourceDocumentType).HasMaxLength(JournalEntryEntity.SourceMaxLength).IsRequired();
         });
         modelBuilder.Entity<JournalEntryLineEntity>(b =>
         {
-            b.ToTable("journal_entry_lines");
+            b.ToTable("journal_entry_lines", t =>
+            {
+                // Partida doble en la base: cada línea tiene importe en debe o en haber, nunca en ambos ni en ninguno.
+                t.HasCheckConstraint("ck_journal_entry_lines_side", "(debit > 0) <> (credit > 0)");
+                t.HasCheckConstraint("ck_journal_entry_lines_not_negative", "debit >= 0 AND credit >= 0");
+                t.HasCheckConstraint("ck_journal_entry_lines_number", "line_number >= 1");
+            });
             b.HasKey(x => x.Id);
-            b.Property(x => x.AccountCode).HasMaxLength(30).IsRequired();
+            b.HasIndex(x => new { x.TenantId, x.JournalEntryId, x.LineNumber }).IsUnique();
+            b.Property(x => x.AccountCode).HasMaxLength(Account.CodeMaxLength).IsRequired();
             b.Property(x => x.Debit).HasPrecision(18, 2);
             b.Property(x => x.Credit).HasPrecision(18, 2);
             b.HasOne<JournalEntryEntity>().WithMany().HasForeignKey(x => new { x.TenantId, x.JournalEntryId })
                 .HasPrincipalKey(e => new { e.TenantId, e.Id }).OnDelete(DeleteBehavior.Cascade);
+
+            // La línea pertenece al plan de cuentas de la misma empresa; Restrict impide perder el asiento
+            // si alguien intentara borrar la cuenta.
+            b.HasOne<Account>().WithMany().HasForeignKey(x => new { x.TenantId, x.AccountId })
+                .HasPrincipalKey(a => new { a.TenantId, a.Id }).OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<Account>(b =>

@@ -146,12 +146,14 @@ namespace ERP.Modules.Accounting.Data.Migrations
 
                     b.Property<string>("SourceDocumentType")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
                         .HasColumnName("source_document_type");
 
                     b.Property<string>("SourceModule")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
                         .HasColumnName("source_module");
 
                     b.Property<int>("Status")
@@ -172,7 +174,20 @@ namespace ERP.Modules.Accounting.Data.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_journal_entries_tenant_id_idempotency_key");
 
-                    b.ToTable("journal_entries", "accounting");
+                    b.HasIndex("TenantId", "AccountingDate", "Id")
+                        .HasDatabaseName("ix_journal_entries_tenant_id_accounting_date_id");
+
+                    b.HasIndex("TenantId", "SourceModule", "SourceDocumentType", "SourceDocumentId")
+                        .HasDatabaseName("ix_journal_entries_tenant_id_source_module_source_document_typ");
+
+                    b.ToTable("journal_entries", "accounting", t =>
+                        {
+                            t.HasCheckConstraint("ck_journal_entries_description", "length(btrim(description)) BETWEEN 1 AND 300");
+
+                            t.HasCheckConstraint("ck_journal_entries_source", "length(btrim(source_module)) > 0 AND length(btrim(source_document_type)) > 0");
+
+                            t.HasCheckConstraint("ck_journal_entries_source_document", "source_document_id <> '00000000-0000-0000-0000-000000000000'::uuid");
+                        });
                 });
 
             modelBuilder.Entity("ERP.Modules.Accounting.Models.JournalEntryLineEntity", b =>
@@ -184,9 +199,13 @@ namespace ERP.Modules.Accounting.Data.Migrations
 
                     b.Property<string>("AccountCode")
                         .IsRequired()
-                        .HasMaxLength(30)
-                        .HasColumnType("character varying(30)")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
                         .HasColumnName("account_code");
+
+                    b.Property<Guid>("AccountId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("account_id");
 
                     b.Property<decimal>("Credit")
                         .HasPrecision(18, 2)
@@ -202,6 +221,10 @@ namespace ERP.Modules.Accounting.Data.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("journal_entry_id");
 
+                    b.Property<int>("LineNumber")
+                        .HasColumnType("integer")
+                        .HasColumnName("line_number");
+
                     b.Property<string>("Memo")
                         .HasColumnType("text")
                         .HasColumnName("memo");
@@ -213,10 +236,21 @@ namespace ERP.Modules.Accounting.Data.Migrations
                     b.HasKey("Id")
                         .HasName("pk_journal_entry_lines");
 
-                    b.HasIndex("TenantId", "JournalEntryId")
-                        .HasDatabaseName("ix_journal_entry_lines_tenant_id_journal_entry_id");
+                    b.HasIndex("TenantId", "AccountId")
+                        .HasDatabaseName("ix_journal_entry_lines_tenant_id_account_id");
 
-                    b.ToTable("journal_entry_lines", "accounting");
+                    b.HasIndex("TenantId", "JournalEntryId", "LineNumber")
+                        .IsUnique()
+                        .HasDatabaseName("ix_journal_entry_lines_tenant_id_journal_entry_id_line_number");
+
+                    b.ToTable("journal_entry_lines", "accounting", t =>
+                        {
+                            t.HasCheckConstraint("ck_journal_entry_lines_not_negative", "debit >= 0 AND credit >= 0");
+
+                            t.HasCheckConstraint("ck_journal_entry_lines_number", "line_number >= 1");
+
+                            t.HasCheckConstraint("ck_journal_entry_lines_side", "(debit > 0) <> (credit > 0)");
+                        });
                 });
 
             modelBuilder.Entity("ERP.Modules.Accounting.Models.Account", b =>
@@ -231,6 +265,14 @@ namespace ERP.Modules.Accounting.Data.Migrations
 
             modelBuilder.Entity("ERP.Modules.Accounting.Models.JournalEntryLineEntity", b =>
                 {
+                    b.HasOne("ERP.Modules.Accounting.Models.Account", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "AccountId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_journal_entry_lines_accounts_tenant_id_account_id");
+
                     b.HasOne("ERP.Modules.Accounting.Models.JournalEntryEntity", null)
                         .WithMany()
                         .HasForeignKey("TenantId", "JournalEntryId")
