@@ -14,4 +14,11 @@
     <Deterministic>true</Deterministic>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
+
+  <!-- Activa el hook de formato (.githooks/pre-commit) en cada clon al compilar. No corre en CI ni sin .git. -->
+  <Target Name="ActivarHooksGit" BeforeTargets="Build"
+          Condition="'$(CI)' != 'true' AND '$(DesignTimeBuild)' != 'true' AND Exists('$(MSBuildThisFileDirectory).git') AND Exists('$(MSBuildThisFileDirectory).githooks/pre-commit')">
+    <Exec Command="git config core.hooksPath .githooks" WorkingDirectory="$(MSBuildThisFileDirectory)"
+          ContinueOnError="true" IgnoreExitCode="true" StandardOutputImportance="low" />
+  </Target>
 </Project>

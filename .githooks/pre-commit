@@ -1,0 +1,32 @@
+#!/bin/sh
+# Formatea automáticamente los .cs que vas a commitear, con las mismas reglas que revisa el CI
+# (dotnet format ERP.slnx --severity warn). Se activa solo al compilar (ver Directory.Build.props).
+# Saltarlo una vez: git commit --no-verify
+
+files=$(git diff --cached --name-only --diff-filter=ACMR -- '*.cs')
+[ -z "$files" ] && exit 0
+
+if ! command -v dotnet >/dev/null 2>&1; then
+  echo "[formato] dotnet no está instalado; se omite el formateo automático."
+  exit 0
+fi
+
+# Archivos con cambios sin agregar: no se tocan, para no meter en el commit algo que no elegiste.
+partial=$(git diff --name-only -- $files)
+full=""
+for f in $files; do
+  case " $(echo $partial) " in
+    *" $f "*) echo "[formato] $f tiene cambios sin agregar (git add); no se formatea." ;;
+    *) full="$full $f" ;;
+  esac
+done
+[ -z "$full" ] && exit 0
+
+echo "[formato] Formateando $(echo $full | wc -w | tr -d ' ') archivo(s) .cs (puede tardar unos segundos)..."
+if ! dotnet format ERP.slnx --include $full --severity warn --verbosity quiet; then
+  echo "[formato] dotnet format falló; revisa el error o usa git commit --no-verify."
+  exit 1
+fi
+
+git add -- $full
+exit 0
