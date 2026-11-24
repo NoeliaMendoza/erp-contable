@@ -21,6 +21,8 @@ public sealed class PurchasesDbContext(
     public const string Schema = "purchases";
 
     public DbSet<Supplier> Suppliers => Set<Supplier>();
+    public DbSet<Purchase> Purchases => Set<Purchase>();
+    public DbSet<PurchaseLine> PurchaseLines => Set<PurchaseLine>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -38,6 +40,7 @@ public sealed class PurchasesDbContext(
             });
 
             b.HasKey(x => x.Id);
+            b.HasAlternateKey(x => new { x.TenantId, x.Id });
 
             b.HasIndex(x => new
             {
@@ -66,6 +69,47 @@ public sealed class PurchasesDbContext(
 
             b.Property(x => x.Address)
                 .HasMaxLength(Supplier.AddressMaxLength);
+        });
+
+        modelBuilder.Entity<Purchase>(b =>
+        {
+            b.ToTable("purchases", table =>
+            {
+                table.HasCheckConstraint("ck_purchases_total_cost_nonnegative", "total_cost >= 0");
+                table.HasCheckConstraint("ck_purchases_number_nonempty", "length(btrim(number)) > 0");
+            });
+            b.HasKey(x => x.Id);
+            b.HasAlternateKey(x => new { x.TenantId, x.Id });
+            b.HasIndex(x => new { x.TenantId, x.Number }).IsUnique()
+                .HasDatabaseName("ux_purchases_tenant_number");
+            b.Property(x => x.Number).HasMaxLength(30).IsRequired();
+            b.Property(x => x.SupplierName).HasMaxLength(200).IsRequired();
+            b.Property(x => x.Status).HasConversion<string>().HasMaxLength(20).IsRequired();
+            b.Property(x => x.TotalCost).HasPrecision(18, 2);
+            b.Ignore(x => x.ReceiptIdempotencyKey);
+            b.HasOne<Supplier>().WithMany().HasForeignKey(x => new { x.TenantId, x.SupplierId })
+                .HasPrincipalKey(x => new { x.TenantId, x.Id }).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<PurchaseLine>(b =>
+        {
+            b.ToTable("purchase_lines", table =>
+            {
+                table.HasCheckConstraint("ck_purchase_lines_quantity_positive", "quantity > 0");
+                table.HasCheckConstraint("ck_purchase_lines_unit_cost_nonnegative", "unit_cost >= 0");
+                table.HasCheckConstraint("ck_purchase_lines_line_cost_nonnegative", "line_cost >= 0");
+            });
+            b.HasKey(x => x.Id);
+            b.HasIndex(x => new { x.TenantId, x.PurchaseId, x.ProductId }).IsUnique()
+                .HasDatabaseName("ux_purchase_lines_purchase_product");
+            b.Property(x => x.Code).HasMaxLength(40).IsRequired();
+            b.Property(x => x.Name).HasMaxLength(200).IsRequired();
+            b.Property(x => x.UnitCode).HasMaxLength(20).IsRequired();
+            b.Property(x => x.Quantity).HasPrecision(18, 4);
+            b.Property(x => x.UnitCost).HasPrecision(18, 4);
+            b.Property(x => x.LineCost).HasPrecision(18, 2);
+            b.HasOne<Purchase>().WithMany(x => x.Lines).HasForeignKey(x => new { x.TenantId, x.PurchaseId })
+                .HasPrincipalKey(x => new { x.TenantId, x.Id }).OnDelete(DeleteBehavior.Cascade);
         });
 
         base.OnModelCreating(modelBuilder);
