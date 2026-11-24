@@ -148,5 +148,15 @@ dotnet run --project src/Frontend/ERP.Frontend
 
 ACUERDO-02 (#12) es compartido con Compras y Ventas. La propuesta para revisar está en
 `docs/modulos/acuerdo02-propuesta.md`; todavía no constituye un acuerdo aprobado.
-ACC-03 (#17) requiere integrar la primera entrega y acordar el contrato antes de implementar
-el servicio de contabilización y el libro diario. No se marcan esos issues como terminados.
+ACC-03 (#17) ya está implementado: servicio de contabilización con cuentas validadas del plan, partida doble,
+trazabilidad, idempotencia (409 ante misma clave con otro contenido), asientos inmutables en la base y libro
+diario por empresa con filtro de fechas (API y pantalla).
+
+Queda abierto, y no depende de #17:
+
+- **Ventas no puede confirmar todavía**: `SaleService` envía nombres de cuenta en lugar de códigos del plan.
+  El cambio que necesita Casas está en [acc03-integracion-ventas.md](acc03-integracion-ventas.md).
+- **PLAT-03 (#35)**: conexión y transacción compartidas para documento, stock y asiento.
+- **#36 ([ACC-04])**: cuentas por empresa, períodos contables y asientos manuales; hasta entonces
+  `period_closed` está declarado pero no se evalúa, y Ventas no tiene de dónde resolver sus códigos.
+- **Reverso**: `ReverseAsync` responde `journal_reverse_pending` hasta acordar la corrección del documento.

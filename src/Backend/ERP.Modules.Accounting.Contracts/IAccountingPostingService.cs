@@ -45,7 +45,9 @@ public sealed record PostingResult(Guid JournalEntryId, bool AlreadyProcessed);
 /// Único camino para que otro módulo genere asientos. Ningún módulo inserta en tablas de Contabilidad.
 /// La implementación (Integrante 2) valida partida doble, período abierto, cuentas válidas del tenant
 /// e idempotencia, y participa en la transacción del caso de uso que la invoca.
-/// Estado: <b>firmas y acuerdo operativo #12 definidos; implementación #17 pendiente</b>.
+/// Estado: <b>firmas y acuerdo operativo #12 definidos; contabilización implementada en #17</b>.
+/// Quedan fuera de esa entrega el período contable (<c>period_closed</c> no se evalúa todavía, #36),
+/// <see cref="ReverseAsync"/> (#34) y la transacción compartida entre módulos (PLAT-03, #35).
 /// </summary>
 /// <remarks>
 /// ACUERDO-02 se documenta en docs/contratos-modulos.md y docs/modulos/acuerdo02-propuesta.md.
@@ -54,7 +56,8 @@ public sealed record PostingResult(Guid JournalEntryId, bool AlreadyProcessed);
 /// Misma empresa/clave/contenido devuelve el asiento existente; misma clave con datos distintos es conflicto.
 /// Compartir la base no basta para atomicidad: el coordinador debe compartir conexión y transacción entre módulos.
 /// Las excepciones se propagan para revertir el caso de uso; no se devuelve éxito parcial.
-/// Estas reglas documentan el comportamiento por implementar, no una garantía de un servicio ya disponible.
+/// <see cref="PostAsync"/> cumple estas reglas y cuenta con pruebas de integración contra PostgreSQL real.
+/// El consumidor debe enviar <b>códigos del plan de cuentas de la empresa activa</b>, no nombres de cuenta.
 /// </remarks>
 public interface IAccountingPostingService
 {
