@@ -18,6 +18,8 @@ public sealed class InventoryDbContext(DbContextOptions<InventoryDbContext> opti
     public DbSet<Product> Products => Set<Product>();
 
     public DbSet<Category> Categories => Set<Category>();
+    public DbSet<Warehouse> Warehouses => Set<Warehouse>();
+
     public DbSet<StockBalance> StockBalances => Set<StockBalance>();
     public DbSet<InventoryMovement> InventoryMovements => Set<InventoryMovement>();
     public DbSet<InventoryMovementLineEntity> InventoryMovementLines => Set<InventoryMovementLineEntity>();
@@ -44,13 +46,33 @@ public sealed class InventoryDbContext(DbContextOptions<InventoryDbContext> opti
             // Unicidad sin distinguir mayúsculas: índice único sobre upper(name) creado con SQL en la migración.
         });
 
+        modelBuilder.Entity<Warehouse>(b =>
+        {
+            b.ToTable("warehouses");
+            b.HasAlternateKey(x => new { x.TenantId, x.Id });
+            b.HasIndex(x => new { x.TenantId, x.Code }).IsUnique();
+
+            // Una sola bodega principal por empresa.
+            b.HasIndex(x => x.TenantId).IsUnique().HasFilter("is_default").HasDatabaseName("ux_warehouses_tenant_id_default");
+            b.Property(x => x.Code).HasMaxLength(Warehouse.CodeMaxLength).IsRequired();
+            b.Property(x => x.Name).HasMaxLength(Warehouse.NameMaxLength).IsRequired();
+        });
+
         modelBuilder.Entity<StockBalance>(b =>
         {
             b.ToTable("stock_balances");
             b.HasAlternateKey(x => new { x.TenantId, x.Id });
             b.HasIndex(x => new { x.TenantId, x.ProductId, x.WarehouseId }).IsUnique();
-            b.Property(x => x.QuantityOnHand).HasPrecision(18, 4);
-            b.Property(x => x.QuantityReserved).HasPrecision(18, 4);
+            b.Property(x => x.QuantityOnHand).HasPrecision(18, StockBalance.QuantityScale);
+            b.Property(x => x.QuantityReserved).HasPrecision(18, StockBalance.QuantityScale);
+            b.Property(x => x.AverageCost).HasPrecision(18, StockBalance.CostScale);
+            b.Ignore(x => x.Available);
+
+            // Artículo y bodega de la MISMA empresa.
+            b.HasOne<Product>().WithMany().HasForeignKey(x => new { x.TenantId, x.ProductId })
+                .HasPrincipalKey(p => new { p.TenantId, p.Id }).OnDelete(DeleteBehavior.Restrict);
+            b.HasOne<Warehouse>().WithMany().HasForeignKey(x => new { x.TenantId, x.WarehouseId })
+                .HasPrincipalKey(w => new { w.TenantId, w.Id }).OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<InventoryMovement>(b =>
@@ -62,17 +84,26 @@ public sealed class InventoryDbContext(DbContextOptions<InventoryDbContext> opti
             b.Property(x => x.SourceModule).HasMaxLength(30).IsRequired();
             b.Property(x => x.SourceDocumentType).HasMaxLength(30).IsRequired();
             b.Property(x => x.Kind).HasConversion<string>().HasMaxLength(20);
-            b.Property(x => x.TotalCost).HasPrecision(18, 2);
+            b.Property(x => x.TotalCost).HasPrecision(18, StockBalance.AmountScale);
+            b.HasOne<Warehouse>().WithMany().HasForeignKey(x => new { x.TenantId, x.WarehouseId })
+                .HasPrincipalKey(w => new { w.TenantId, w.Id }).OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<InventoryMovementLineEntity>(b =>
         {
             b.ToTable("inventory_movement_lines");
             b.HasKey(x => x.Id);
-            b.Property(x => x.Quantity).HasPrecision(18, 4);
-            b.Property(x => x.UnitCost).HasPrecision(18, 4);
+            b.HasIndex(x => new { x.TenantId, x.MovementId, x.LineNumber }).IsUnique();
+            b.HasIndex(x => new { x.TenantId, x.ProductId, x.Sequence });
+            b.Property(x => x.Quantity).HasPrecision(18, StockBalance.QuantityScale);
+            b.Property(x => x.UnitCost).HasPrecision(18, StockBalance.CostScale);
+            b.Property(x => x.LineCost).HasPrecision(18, StockBalance.AmountScale);
+            b.Property(x => x.QuantityAfter).HasPrecision(18, StockBalance.QuantityScale);
+            b.Property(x => x.AverageCostAfter).HasPrecision(18, StockBalance.CostScale);
             b.HasOne<InventoryMovement>().WithMany(m => m.Lines).HasForeignKey(x => new { x.TenantId, x.MovementId })
                 .HasPrincipalKey(m => new { m.TenantId, m.Id }).OnDelete(DeleteBehavior.Cascade);
+            b.HasOne<Product>().WithMany().HasForeignKey(x => new { x.TenantId, x.ProductId })
+                .HasPrincipalKey(p => new { p.TenantId, p.Id }).OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<Product>(b =>

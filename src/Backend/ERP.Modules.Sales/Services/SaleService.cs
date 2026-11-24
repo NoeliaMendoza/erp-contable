@@ -73,18 +73,19 @@ public sealed class SaleService(
             sale.SetTotals(subtotal, taxTotal);
             await db.SaveChangesAsync(transactionCt);
 
-            var inventoryLines = request.Lines.Select(l =>
-            {
-                var product = catalogById[l.ProductId];
-                return new InventoryMovementLine(l.ProductId, l.Quantity,
-                    product.TracksInventory ? product.Cost : null);
-            }).Where(l => catalogById[l.ProductId].TracksInventory).ToArray();
+            // ACUERDO-01: solo artículos con control de inventario, una línea por artículo y sin costo
+            // (Inventario aplica el costo promedio y lo devuelve en TotalCost).
+            var inventoryLines = request.Lines
+                .Where(l => catalogById[l.ProductId].TracksInventory)
+                .GroupBy(l => l.ProductId)
+                .Select(g => new InventoryMovementLine(g.Key, g.Sum(l => l.Quantity), null))
+                .ToArray();
 
             InventoryMovementResult stockResult = new(Guid.Empty, true, 0m);
             if (inventoryLines.Length > 0)
             {
                 stockResult = await inventory.RegisterAsync(new InventoryMovementRequest(
-                    $"sale:{sale.Id}", "sales", "sale", sale.Id, request.WarehouseId,
+                    $"sales:invoice:{sale.Id:D}", "sales", "invoice", sale.Id, request.WarehouseId,
                     InventoryMovementKind.Salida, saleDate,
                     inventoryLines), transactionCt);
             }
@@ -97,7 +98,7 @@ public sealed class SaleService(
             if (taxTotal > 0)
                 postingLines.Add(new PostingLine("IVA por pagar", 0m, taxTotal, "IVA calculado"));
 
-            var costOfGoodsSold = inventoryLines.Sum(l => (l.UnitCost ?? 0m) * l.Quantity);
+            var costOfGoodsSold = stockResult.TotalCost;
             if (costOfGoodsSold > 0)
             {
                 postingLines.Add(new PostingLine("Costo de ventas", costOfGoodsSold, 0m, "Costo de mercancía vendida"));

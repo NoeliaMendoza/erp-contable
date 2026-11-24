@@ -76,6 +76,14 @@ namespace ERP.Modules.Inventory.Data.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
                     b.Property<string>("IdempotencyKey")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -131,6 +139,9 @@ namespace ERP.Modules.Inventory.Data.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_inventory_movements_tenant_id_idempotency_key");
 
+                    b.HasIndex("TenantId", "WarehouseId")
+                        .HasDatabaseName("ix_inventory_movements_tenant_id_warehouse_id");
+
                     b.ToTable("inventory_movements", "inventory");
                 });
 
@@ -140,6 +151,20 @@ namespace ERP.Modules.Inventory.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id");
+
+                    b.Property<decimal?>("AverageCostAfter")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
+                        .HasColumnName("average_cost_after");
+
+                    b.Property<decimal>("LineCost")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("line_cost");
+
+                    b.Property<int>("LineNumber")
+                        .HasColumnType("integer")
+                        .HasColumnName("line_number");
 
                     b.Property<Guid>("MovementId")
                         .HasColumnType("uuid")
@@ -154,6 +179,15 @@ namespace ERP.Modules.Inventory.Data.Migrations
                         .HasColumnType("numeric(18,4)")
                         .HasColumnName("quantity");
 
+                    b.Property<decimal?>("QuantityAfter")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
+                        .HasColumnName("quantity_after");
+
+                    b.Property<long>("Sequence")
+                        .HasColumnType("bigint")
+                        .HasColumnName("sequence");
+
                     b.Property<Guid>("TenantId")
                         .HasColumnType("uuid")
                         .HasColumnName("tenant_id");
@@ -166,8 +200,12 @@ namespace ERP.Modules.Inventory.Data.Migrations
                     b.HasKey("Id")
                         .HasName("pk_inventory_movement_lines");
 
-                    b.HasIndex("TenantId", "MovementId")
-                        .HasDatabaseName("ix_inventory_movement_lines_tenant_id_movement_id");
+                    b.HasIndex("TenantId", "MovementId", "LineNumber")
+                        .IsUnique()
+                        .HasDatabaseName("ix_inventory_movement_lines_tenant_id_movement_id_line_number");
+
+                    b.HasIndex("TenantId", "ProductId", "Sequence")
+                        .HasDatabaseName("ix_inventory_movement_lines_tenant_id_product_id_sequence");
 
                     b.ToTable("inventory_movement_lines", "inventory");
                 });
@@ -267,6 +305,9 @@ namespace ERP.Modules.Inventory.Data.Migrations
                     b.HasKey("Id")
                         .HasName("pk_products");
 
+                    b.HasAlternateKey("TenantId", "Id")
+                        .HasName("ak_products_tenant_id_id");
+
                     b.HasIndex("TenantId", "Barcode")
                         .IsUnique()
                         .HasDatabaseName("ix_products_tenant_id_barcode")
@@ -291,6 +332,15 @@ namespace ERP.Modules.Inventory.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id");
+
+                    b.Property<decimal>("AverageCost")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
+                        .HasColumnName("average_cost");
+
+                    b.Property<long>("LastSequence")
+                        .HasColumnType("bigint")
+                        .HasColumnName("last_sequence");
 
                     b.Property<Guid>("ProductId")
                         .HasColumnType("uuid")
@@ -319,6 +369,9 @@ namespace ERP.Modules.Inventory.Data.Migrations
 
                     b.HasAlternateKey("TenantId", "Id")
                         .HasName("ak_stock_balances_tenant_id_id");
+
+                    b.HasIndex("TenantId", "WarehouseId")
+                        .HasDatabaseName("ix_stock_balances_tenant_id_warehouse_id");
 
                     b.HasIndex("TenantId", "ProductId", "WarehouseId")
                         .IsUnique()
@@ -383,6 +436,82 @@ namespace ERP.Modules.Inventory.Data.Migrations
                     b.ToTable("units", "inventory");
                 });
 
+            modelBuilder.Entity("ERP.Modules.Inventory.Models.Warehouse", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("code");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
+
+                    b.Property<bool>("IsDefault")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_default");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("name");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTimeOffset?>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at_utc");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_warehouses");
+
+                    b.HasAlternateKey("TenantId", "Id")
+                        .HasName("ak_warehouses_tenant_id_id");
+
+                    b.HasIndex("TenantId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_warehouses_tenant_id_default")
+                        .HasFilter("is_default");
+
+                    b.HasIndex("TenantId", "Code")
+                        .IsUnique()
+                        .HasDatabaseName("ix_warehouses_tenant_id_code");
+
+                    b.ToTable("warehouses", "inventory");
+                });
+
+            modelBuilder.Entity("ERP.Modules.Inventory.Models.InventoryMovement", b =>
+                {
+                    b.HasOne("ERP.Modules.Inventory.Models.Warehouse", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "WarehouseId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_inventory_movements_warehouses_tenant_id_warehouse_id");
+                });
+
             modelBuilder.Entity("ERP.Modules.Inventory.Models.InventoryMovementLineEntity", b =>
                 {
                     b.HasOne("ERP.Modules.Inventory.Models.InventoryMovement", null)
@@ -392,6 +521,14 @@ namespace ERP.Modules.Inventory.Data.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_inventory_movement_lines_inventory_movements_tenant_id_move");
+
+                    b.HasOne("ERP.Modules.Inventory.Models.Product", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "ProductId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_inventory_movement_lines_products_tenant_id_product_id");
                 });
 
             modelBuilder.Entity("ERP.Modules.Inventory.Models.Product", b =>
@@ -410,6 +547,25 @@ namespace ERP.Modules.Inventory.Data.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_products_units_tenant_id_unit_id");
+                });
+
+            modelBuilder.Entity("ERP.Modules.Inventory.Models.StockBalance", b =>
+                {
+                    b.HasOne("ERP.Modules.Inventory.Models.Product", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "ProductId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_stock_balances_products_tenant_id_product_id");
+
+                    b.HasOne("ERP.Modules.Inventory.Models.Warehouse", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "WarehouseId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_stock_balances_warehouses_tenant_id_warehouse_id");
                 });
 
             modelBuilder.Entity("ERP.Modules.Inventory.Models.InventoryMovement", b =>

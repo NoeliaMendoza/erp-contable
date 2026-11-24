@@ -222,28 +222,89 @@ public sealed class InventoryModelTests
     }
 
     [Fact]
-    public void Stock_salida_no_deja_cantidad_negativa()
+    public void Ejemplo_de_la_tarea_entrada_10_a_3_y_salida_4_deja_6_con_costo_12()
     {
         var stock = StockBalance.Create(Tenant, Guid.NewGuid(), Guid.NewGuid());
-        stock.Adjust(10m);
 
-        stock.Adjust(-4m);
+        var entrada = stock.Receive(10m, 3m);
+        var salida = stock.Issue(4m);
 
+        Assert.Equal(30m, entrada.LineCost);
+        Assert.Equal(12m, salida.LineCost);
+        Assert.Equal(3m, salida.UnitCost);
         Assert.Equal(6m, stock.QuantityOnHand);
-        Assert.Equal("stock_insufficient", Assert.Throws<DomainException>(() => stock.Adjust(-7m)).Code);
-        Assert.Equal(6m, stock.QuantityOnHand);
+        Assert.Equal(3m, stock.AverageCost);
+        Assert.Equal(2, stock.LastSequence);
     }
 
     [Fact]
-    public void Stock_respeta_cantidad_reservada()
+    public void Entrada_recalcula_el_promedio_y_la_salida_lo_conserva()
     {
         var stock = StockBalance.Create(Tenant, Guid.NewGuid(), Guid.NewGuid());
-        stock.Adjust(10m);
-        stock.Reserve(4m);
+        stock.Receive(10m, 3m);
 
-        Assert.Equal("stock_insufficient", Assert.Throws<DomainException>(() => stock.Adjust(-7m)).Code);
-        stock.Adjust(-6m);
-        Assert.Equal(4m, stock.QuantityOnHand);
+        stock.Receive(10m, 4m);
+        var salida = stock.Issue(5m);
+
+        Assert.Equal(3.5m, stock.AverageCost);
+        Assert.Equal(17.50m, salida.LineCost);
+        Assert.Equal(15m, salida.QuantityAfter);
+        Assert.Equal(3.5m, salida.AverageCostAfter);
+    }
+
+    [Fact]
+    public void Promedio_se_redondea_a_4_decimales_y_el_importe_a_2()
+    {
+        var stock = StockBalance.Create(Tenant, Guid.NewGuid(), Guid.NewGuid());
+        stock.Receive(3m, 1m);
+        stock.Receive(3m, 2m);
+        stock.Receive(3m, 2m);
+
+        var salida = stock.Issue(1m);
+
+        Assert.Equal(1.6667m, stock.AverageCost);
+        Assert.Equal(1.67m, salida.LineCost);
+    }
+
+    [Fact]
+    public void Salida_mayor_que_la_existencia_se_rechaza_sin_cambiar_el_saldo()
+    {
+        var stock = StockBalance.Create(Tenant, Guid.NewGuid(), Guid.NewGuid());
+        stock.Receive(6m, 3m);
+
+        var error = Assert.Throws<DomainException>(() => stock.Issue(7m));
+
+        Assert.Equal("inventory_insufficient_stock", error.Code);
+        Assert.Equal(6m, stock.QuantityOnHand);
+        Assert.Equal(1, stock.LastSequence);
+    }
+
+    [Theory]
+    [InlineData(0, 1, "inventory_quantity_invalid")]
+    [InlineData(1.00001, 1, "inventory_quantity_invalid")]
+    [InlineData(1, -1, "inventory_unit_cost_invalid")]
+    [InlineData(1, 1.00001, "inventory_unit_cost_invalid")]
+    public void Entrada_valida_cantidad_y_costo(double quantity, double unitCost, string code)
+    {
+        var stock = StockBalance.Create(Tenant, Guid.NewGuid(), Guid.NewGuid());
+
+        var error = Assert.Throws<DomainException>(() => stock.Receive((decimal)quantity, (decimal)unitCost));
+
+        Assert.Equal(code, error.Code);
+    }
+
+    [Fact]
+    public void Bodega_principal_no_se_desactiva()
+    {
+        var principal = Warehouse.Create(Guid.NewGuid(), Tenant, " principal ", "Bodega principal", isDefault: true, Now, null);
+        var otra = Warehouse.Create(Guid.NewGuid(), Tenant, "norte", "Bodega norte", isDefault: false, Now, null);
+
+        otra.SetActive(false, Now, null);
+
+        Assert.Equal("PRINCIPAL", principal.Code);
+        Assert.False(otra.IsActive);
+        Assert.Equal("inventory_default_warehouse_required",
+            Assert.Throws<DomainException>(() => principal.SetActive(false, Now, null)).Code);
     }
 
     [Fact]

@@ -84,6 +84,34 @@ public sealed class SaveCategoryRequestValidator : AbstractValidator<SaveCategor
     }
 }
 
+public sealed class CreateWarehouseRequestValidator : AbstractValidator<CreateWarehouseRequest>
+{
+    public CreateWarehouseRequestValidator()
+    {
+        RuleFor(x => x.Code).Cascade(CascadeMode.Stop)
+            .Must(c => !string.IsNullOrWhiteSpace(c)).WithMessage("Ingrese el código de la bodega.")
+            .Must(c => c.Trim().Length <= Warehouse.CodeMaxLength).WithMessage($"El código admite como máximo {Warehouse.CodeMaxLength} caracteres.")
+            .Must(c => c.Trim().All(ch => char.IsAsciiLetterOrDigit(ch) || ch is '-' or '_'))
+            .WithMessage("El código solo admite letras, números, guion y guion bajo.");
+        RuleFor(x => x.Name).SetValidator(new WarehouseNameValidator());
+    }
+}
+
+public sealed class RenameWarehouseRequestValidator : AbstractValidator<RenameWarehouseRequest>
+{
+    public RenameWarehouseRequestValidator() => RuleFor(x => x.Name).SetValidator(new WarehouseNameValidator());
+}
+
+internal sealed class WarehouseNameValidator : AbstractValidator<string>
+{
+    public WarehouseNameValidator()
+    {
+        RuleFor(n => n).Cascade(CascadeMode.Stop)
+            .Must(n => !string.IsNullOrWhiteSpace(n)).WithMessage("Ingrese el nombre de la bodega.")
+            .Must(n => n.Trim().Length <= Warehouse.NameMaxLength).WithMessage($"El nombre admite como máximo {Warehouse.NameMaxLength} caracteres.");
+    }
+}
+
 internal static partial class CodePattern
 {
     public static bool IsCode(string? value) => value is not null && Allowed().IsMatch(value.Trim());

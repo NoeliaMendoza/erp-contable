@@ -40,6 +40,7 @@ public sealed class ViewLocator : IDataTemplate
         [typeof(UnitsViewModel)] = () => new UnitsView(),
         [typeof(ProductsViewModel)] = () => new ProductsView(),
         [typeof(CategoriesViewModel)] = () => new CategoriesView(),
+        [typeof(StockViewModel)] = () => new StockView(),
         [typeof(SalesViewModel)] = () => new SalesView(),
         [typeof(CustomersViewModel)] = () => new CustomersView(),
         [typeof(SuppliersViewModel)] = () => new SuppliersView(),

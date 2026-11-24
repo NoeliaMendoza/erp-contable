@@ -11,8 +11,29 @@ Responsable: **Mendoza** · Rama: `feature/inventory-productos` · Esquema Postg
 | Búsqueda, filtro por tipo, paginación | Bodegas, reservas, costeo |
 | Contrato `IProductCatalog` para Ventas | Impuestos, precios históricos |
 
-> **El catálogo no calcula existencias.** No hay un campo "stock" editable a propósito: el stock será el
+> **El catálogo no calcula existencias.** No hay un campo "stock" editable a propósito: el stock es el
 > resultado de los movimientos de inventario (INV-03), nunca un número digitado.
+
+## Bodegas, existencias y kardex (INV-03)
+
+Reglas completas en ACUERDO-01 ([contratos-modulos.md](../contratos-modulos.md)). Resumen:
+
+- **Bodegas.** Cada empresa tiene una bodega principal (`PRINCIPAL`), que se crea sola la primera vez y no se desactiva.
+  Se pueden crear más con código único por empresa.
+- **Movimientos.** Solo Compras (entrada) y Ventas (salida) los registran, con `IInventoryMovementService`. No hay endpoint
+  para digitarlos. No se editan ni se borran.
+- **Costo promedio ponderado móvil** por artículo y bodega, con 4 decimales. El costo de una salida (`TotalCost`) va con 2.
+- **Sin stock negativo**, también en la base (CHECK). Dos ventas simultáneas esperan una a la otra (bloqueo de la fila del saldo).
+
+| Endpoint | Permiso |
+|---|---|
+| `GET /api/v1/warehouses` | `inventory.kardex.read` |
+| `POST /api/v1/warehouses` · `PUT /{id}` · `PATCH /{id}/status` | `inventory.warehouses.manage` |
+| `GET /api/v1/stock?warehouseId=&search=&isActive=` | `inventory.kardex.read` |
+| `GET /api/v1/products/{id}/kardex?warehouseId=&from=&to=` | `inventory.kardex.read` |
+
+Sin `warehouseId` se usa la bodega principal. Las existencias incluyen los artículos sin movimientos (con 0).
+Un artículo está **bajo el mínimo** cuando su existencia es menor que `minStock`.
 
 ## Reglas
 

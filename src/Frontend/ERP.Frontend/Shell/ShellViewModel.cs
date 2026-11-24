@@ -42,6 +42,11 @@ public sealed partial class ShellViewModel : ViewModelBase
                 MenuItems.Add(new MenuEntry("Productos y servicios", pages.InventoryProducts));
             }
 
+            if (session.Can("inventory.kardex.read"))
+            {
+                MenuItems.Add(new MenuEntry("Existencias", pages.InventoryStock));
+            }
+
             if (session.EnabledFeatures.Contains("sales"))
             {
                 if (session.Can("sales.customers.read"))
