@@ -110,6 +110,8 @@ public sealed class SuppliersApiTests(PostgresFixture db) : IAsyncLifetime
         var invalid = ValidRequest("bad-email") with { Email = "no-es-email" };
         Assert.Equal(HttpStatusCode.BadRequest, (await _ana.PostAsJsonAsync("/api/v1/suppliers", invalid, Ct)).StatusCode);
         Assert.Equal(HttpStatusCode.BadRequest, (await _ana.PostAsJsonAsync("/api/v1/suppliers", ValidRequest("empty") with { Name = " " }, Ct)).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest,
+            (await _ana.PatchAsJsonAsync($"/api/v1/suppliers/{Guid.NewGuid()}/status", new { }, Ct)).StatusCode);
         Assert.Equal(HttpStatusCode.Unauthorized,
             (await _api.ClientFor(null, Andina).GetAsync("/api/v1/suppliers", Ct)).StatusCode);
     }
