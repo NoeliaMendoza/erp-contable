@@ -16,6 +16,10 @@ namespace ERP.Modules.Accounting.Data.Migrations
     public partial class AccountingPostingIntegrity : Migration
     {
         private const string Lines = "accounting.journal_entry_lines";
+        private const string Accounts = "accounting.accounts";
+
+        /// <summary>Tablas cuya política se suspende durante el relleno y se restablece a continuación.</summary>
+        private static readonly string[] BackfillTables = [Lines, Accounts];
 
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -257,17 +261,19 @@ namespace ERP.Modules.Accounting.Data.Migrations
         }
 
         /// <summary>
-        /// Rellena las columnas nuevas de las líneas que ya existan. La tabla tiene RLS forzado, que
-        /// alcanza también al propietario, así que el relleno se hace con la política suspendida y
-        /// esta se restablece a continuación, dentro de la misma transacción de la migración.
+        /// Rellena las columnas nuevas de las líneas que ya existan. El enlace se deduce del código de
+        /// cuenta guardado, así que el relleno lee <c>accounting.accounts</c> además de las líneas.
+        /// Ambas tablas tienen RLS forzado, que alcanza también al propietario, y el rol de migraciones
+        /// no fija empresa: sin suspender la política en las dos, la consulta no encontraría ninguna
+        /// cuenta y la migración fallaría con datos existentes. La política se restablece a continuación,
+        /// dentro de la misma transacción de la migración, así que nunca queda una tabla sin aislar.
         /// </summary>
         private static string BackfillSql() => $"""
-            ALTER TABLE {Lines} NO FORCE ROW LEVEL SECURITY;
-            ALTER TABLE {Lines} DISABLE ROW LEVEL SECURITY;
+            {Suspend()}
 
             UPDATE {Lines} AS l
                SET account_id = a.id
-              FROM accounting.accounts AS a
+              FROM {Accounts} AS a
              WHERE a.tenant_id = l.tenant_id
                AND a.code = l.account_code
                AND l.account_id IS NULL;
@@ -291,8 +297,17 @@ namespace ERP.Modules.Accounting.Data.Migrations
                 END IF;
             END $$;
 
-            ALTER TABLE {Lines} ENABLE ROW LEVEL SECURITY;
-            ALTER TABLE {Lines} FORCE ROW LEVEL SECURITY;
+            {Restore()}
             """;
+
+        private static string Suspend() => string.Join(Environment.NewLine, BackfillTables.Select(table => $"""
+            ALTER TABLE {table} NO FORCE ROW LEVEL SECURITY;
+            ALTER TABLE {table} DISABLE ROW LEVEL SECURITY;
+            """));
+
+        private static string Restore() => string.Join(Environment.NewLine, BackfillTables.Select(table => $"""
+            ALTER TABLE {table} ENABLE ROW LEVEL SECURITY;
+            ALTER TABLE {table} FORCE ROW LEVEL SECURITY;
+            """));
     }
 }
