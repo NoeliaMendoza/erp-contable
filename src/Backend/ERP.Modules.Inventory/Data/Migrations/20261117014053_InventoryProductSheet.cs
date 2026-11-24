@@ -68,7 +68,9 @@ namespace ERP.Modules.Inventory.Data.Migrations
                 type: "character varying(20)",
                 maxLength: 20,
                 nullable: false,
-                defaultValue: "");
+                // Editado a mano: los productos que ya existían quedan como "Standard" (si quedaran vacíos, falla
+                // ck_products_vat_treatment). El valor por defecto se quita más abajo.
+                defaultValue: "Standard");
 
             migrationBuilder.CreateTable(
                 name: "categories",

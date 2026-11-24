@@ -4,7 +4,7 @@ name: PR vinculado a tarea
 
 on:
   pull_request:
-    types: [opened, edited, reopened, synchronize]
+    types: [opened, edited, reopened, synchronize, labeled, unlabeled]
 
 permissions:
   contents: read
@@ -25,6 +25,8 @@ jobs:
         with:
           script: |
             const MARKER = '<!-- bot:tarea-vinculada -->';
+            // PR que no corresponde a ninguna tarea (corrección urgente, CI): se exime con esta etiqueta.
+            const SKIP_LABEL = 'sin tarea';
             const pr = context.payload.pull_request;
             const { owner, repo } = context.repo;
             // Los PR desde forks reciben un token de solo lectura: ahí solo se informa en el check.
@@ -63,6 +65,12 @@ jobs:
               core.setFailed(text.replace(/\*\*/g, ''));
             }
 
+            if (pr.labels.some((l) => l.name === SKIP_LABEL)) {
+              core.notice(`El PR tiene la etiqueta "${SKIP_LABEL}": no se exige tarea.`);
+              await clearComment();
+              return;
+            }
+
             // Comprueba que los números apunten a tareas (issues) de este repositorio y no a PRs.
             const invalid = [];
             for (const n of new Set([...closing, ...refs])) {
@@ -86,10 +94,19 @@ jobs:
               return;
             }
 
+            // PR parcial: solo enlaza la tarea, que queda abierta.
+            if (refs.length > 0) {
+              core.warning(`El PR solo referencia ${refs.map((n) => `#${n}`).join(', ')}: la tarea NO se cerrará sola al fusionar.`);
+              await clearComment();
+              return;
+            }
+
             const hint = spanish
               ? '\n\nOjo: GitHub no entiende **"Cierra"**; la palabra tiene que ir en inglés: `Closes #15`.'
               : '';
             await report(
               '**Este PR no dice qué tarea cierra.** Agrega en la descripción una línea como:\n\n' +
               '```\nCloses #15\n```\n' +
-              'Así la tarea se cierra sola al fusionar y el tablero se actualiza.' + hint);
+              'Así la tarea se cierra sola al fusionar y el tablero se actualiza.' + hint + '\n\n' +
+              '- Si el PR es solo una parte de la tarea, usa `Refs #15` (la tarea queda abierta).\n' +
+              `- Si no corresponde a ninguna tarea (por ejemplo, una corrección urgente o CI), agrega la etiqueta \`${SKIP_LABEL}\`.`);

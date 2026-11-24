@@ -25,6 +25,8 @@ public static class SalesModule
         _ = configuration;
         services.AddControllers().AddApplicationPart(typeof(SalesModule).Assembly);
         services.AddModuleDbContext<SalesDbContext>(configuration, SalesDbContext.Schema);
+        // Tarifas de IVA sintéticas hasta verificar la fuente oficial (SaleService las necesita para calcular el IVA).
+        services.AddSingleton<ITaxRateCatalogProvider, SalesTaxRateCatalogProvider>();
         services.AddScoped<SaleService>();
         services.AddScoped<CustomerService>();
         services.AddValidatorsFromAssemblyContaining<SaveCustomerRequestValidator>();
