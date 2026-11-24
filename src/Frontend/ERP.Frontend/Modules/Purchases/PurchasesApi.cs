@@ -29,9 +29,33 @@ public sealed record SaveSupplier(
 
 public sealed record ChangeSupplierStatus(bool IsActive);
 
+public sealed record PurchaseLineRequest(Guid ProductId, decimal Quantity, decimal UnitCost);
+
+public sealed record RegisterPurchaseRequest(Guid SupplierId, DateOnly? PurchaseDate,
+    IReadOnlyList<PurchaseLineRequest> Lines);
+
+public sealed record PurchaseLineItem(Guid Id, Guid ProductId, string Code, string Name, string UnitCode,
+    decimal Quantity, decimal UnitCost, decimal LineCost);
+
+public sealed record PurchaseItem(Guid Id, string Number, Guid SupplierId, string SupplierName,
+    DateOnly PurchaseDate, Guid WarehouseId, string Status, decimal TotalCost,
+    Guid? StockMovementId, Guid? JournalEntryId, IReadOnlyList<PurchaseLineItem> Lines);
+
 /// <summary>Cliente del módulo Compras sobre el cliente HTTP autenticado y tenant-aware compartido.</summary>
 public sealed class PurchasesApi(ErpApiClient api)
 {
+    public Task<PurchaseItem> RegisterPurchaseAsync(RegisterPurchaseRequest request, CancellationToken ct = default) =>
+        api.SendJsonAsync<PurchaseItem>(HttpMethod.Post, "api/v1/purchases", request, ct);
+
+    public Task<PagedResult<PurchaseItem>> ListPurchasesAsync(int page, int pageSize, string? search,
+        string? status, CancellationToken ct = default)
+    {
+        var query = new List<string> { $"page={page}", $"pageSize={pageSize}" };
+        if (!string.IsNullOrWhiteSpace(search)) query.Add("search=" + Uri.EscapeDataString(search.Trim()));
+        if (!string.IsNullOrWhiteSpace(status)) query.Add("status=" + Uri.EscapeDataString(status.Trim()));
+        return api.GetAsync<PagedResult<PurchaseItem>>($"api/v1/purchases?{string.Join('&', query)}", ct);
+    }
+
     public Task<IReadOnlyList<SupplierIdentificationTypeOption>> GetSupplierIdentificationTypesAsync(CancellationToken ct = default) =>
         api.GetAsync<IReadOnlyList<SupplierIdentificationTypeOption>>("api/v1/suppliers/identification-types", ct);
 
