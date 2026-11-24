@@ -75,6 +75,11 @@ public sealed partial class ShellViewModel : ViewModelBase
             MenuItems.Add(new MenuEntry("Plan de cuentas", pages.AccountingAccounts));
         }
 
+        if (session.EnabledFeatures.Contains("accounting") && session.Can("accounting.entries.read"))
+        {
+            MenuItems.Add(new MenuEntry("Libro diario", pages.AccountingJournal));
+        }
+
         if (session.EnabledFeatures.Contains("purchases") && session.Can("purchases.suppliers.read"))
         {
             MenuItems.Add(new MenuEntry("Proveedores", pages.PurchaseSuppliers));

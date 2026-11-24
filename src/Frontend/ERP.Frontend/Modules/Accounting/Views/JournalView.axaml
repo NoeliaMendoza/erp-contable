@@ -1,0 +1,100 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:ERP.Frontend.Modules.Accounting.ViewModels"
+             xmlns:acc="using:ERP.Frontend.Modules.Accounting"
+             xmlns:controls="using:ERP.Frontend.Shared.Controls"
+             x:Class="ERP.Frontend.Modules.Accounting.Views.JournalView"
+             x:DataType="vm:JournalViewModel">
+  <StackPanel Spacing="16" IsEnabled="{Binding !IsBusy}">
+    <DockPanel>
+      <Button DockPanel.Dock="Right" Content="Actualizar" Command="{Binding LoadCommand}" />
+      <TextBlock Classes="h1" Text="Libro diario" />
+    </DockPanel>
+    <controls:FeedbackBar IsBusy="{Binding IsBusy}" ErrorMessage="{Binding ErrorMessage}"
+                          RetryCommand="{Binding LoadCommand}" />
+
+    <Border Classes="card">
+      <StackPanel Spacing="8">
+        <Grid ColumnDefinitions="*,*,Auto,Auto" ColumnSpacing="8">
+          <controls:FormField Label="Desde (fecha contable)">
+            <controls:FormField.FieldContent>
+              <CalendarDatePicker SelectedDate="{Binding From}" HorizontalAlignment="Stretch"
+                                  AutomationProperties.Name="Fecha contable inicial" />
+            </controls:FormField.FieldContent>
+          </controls:FormField>
+          <controls:FormField Grid.Column="1" Label="Hasta (fecha contable)" ErrorMessage="{Binding FilterError}">
+            <controls:FormField.FieldContent>
+              <CalendarDatePicker SelectedDate="{Binding To}" HorizontalAlignment="Stretch"
+                                  AutomationProperties.Name="Fecha contable final" />
+            </controls:FormField.FieldContent>
+          </controls:FormField>
+          <Button Grid.Column="2" Classes="primary" Content="Filtrar" VerticalAlignment="Bottom"
+                  Command="{Binding FilterCommand}" IsDefault="True" />
+          <Button Grid.Column="3" Content="Limpiar" VerticalAlignment="Bottom" Command="{Binding ClearFiltersCommand}" />
+        </Grid>
+        <TextBlock Classes="muted small" TextWrapping="Wrap"
+                   Text="Sin fechas se listan todos los asientos de la empresa activa, del más reciente al más antiguo. Los asientos no se editan ni se borran: una corrección se registra como reverso." />
+      </StackPanel>
+    </Border>
+
+    <controls:EmptyState IsVisible="{Binding IsEmpty}" Title="No hay asientos para mostrar"
+                         Message="Amplíe el rango de fechas. Los asientos los genera Contabilidad cuando Compras o Ventas confirman un documento." />
+
+    <ItemsControl ItemsSource="{Binding Entries}">
+      <ItemsControl.ItemTemplate>
+        <DataTemplate x:DataType="acc:JournalEntryItem">
+          <Border Classes="card" Margin="0,0,0,12">
+            <StackPanel Spacing="8">
+              <Grid ColumnDefinitions="110,*,170,110,110" ColumnSpacing="8">
+                <TextBlock Text="{Binding DateLabel}" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="1" Classes="h2" Text="{Binding Description}" VerticalAlignment="Center"
+                           TextWrapping="Wrap" />
+                <TextBlock Grid.Column="2" Classes="muted" Text="{Binding SourceLabel}" VerticalAlignment="Center"
+                           TextTrimming="CharacterEllipsis" />
+                <TextBlock Grid.Column="3" Classes="muted" Text="{Binding StatusLabel}" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="4" Text="{Binding TotalLabel}" VerticalAlignment="Center"
+                           HorizontalAlignment="Right" />
+              </Grid>
+              <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                <StackPanel MinWidth="760" Spacing="4">
+                  <Grid ColumnDefinitions="40,300,110,110,*" ColumnSpacing="8">
+                    <TextBlock Classes="muted" Text="#" />
+                    <TextBlock Grid.Column="1" Classes="muted" Text="Cuenta" />
+                    <TextBlock Grid.Column="2" Classes="muted" Text="Debe" HorizontalAlignment="Right" />
+                    <TextBlock Grid.Column="3" Classes="muted" Text="Haber" HorizontalAlignment="Right" />
+                    <TextBlock Grid.Column="4" Classes="muted" Text="Detalle" />
+                  </Grid>
+                  <ItemsControl ItemsSource="{Binding Lines}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="acc:JournalLineItem">
+                        <Grid ColumnDefinitions="40,300,110,110,*" ColumnSpacing="8" Margin="0,2">
+                          <TextBlock Text="{Binding LineNumber}" VerticalAlignment="Center" />
+                          <TextBlock Grid.Column="1" Text="{Binding Account}" VerticalAlignment="Center"
+                                     TextWrapping="Wrap" />
+                          <TextBlock Grid.Column="2" Text="{Binding DebitLabel}" VerticalAlignment="Center"
+                                     HorizontalAlignment="Right" />
+                          <TextBlock Grid.Column="3" Text="{Binding CreditLabel}" VerticalAlignment="Center"
+                                     HorizontalAlignment="Right" />
+                          <TextBlock Grid.Column="4" Classes="muted" Text="{Binding MemoLabel}"
+                                     VerticalAlignment="Center" TextWrapping="Wrap" />
+                        </Grid>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </StackPanel>
+              </ScrollViewer>
+            </StackPanel>
+          </Border>
+        </DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
+
+    <DockPanel>
+      <TextBlock DockPanel.Dock="Left" Classes="muted" VerticalAlignment="Center"
+                 Text="{Binding TotalCount, StringFormat='Total: {0} asiento(s)'}" />
+      <controls:PaginationBar CurrentPage="{Binding Page}" TotalPages="{Binding TotalPages}"
+                              CanGoPrevious="{Binding CanGoPrevious}" CanGoNext="{Binding CanGoNext}"
+                              PreviousCommand="{Binding PreviousPageCommand}" NextCommand="{Binding NextPageCommand}" />
+    </DockPanel>
+  </StackPanel>
+</UserControl>
