@@ -39,13 +39,26 @@ public sealed record PurchaseLineItem(Guid Id, Guid ProductId, string Code, stri
 
 public sealed record PurchaseItem(Guid Id, string Number, Guid SupplierId, string SupplierName,
     DateOnly PurchaseDate, Guid WarehouseId, string Status, decimal TotalCost,
-    Guid? StockMovementId, Guid? JournalEntryId, IReadOnlyList<PurchaseLineItem> Lines);
+    Guid? StockMovementId, Guid? JournalEntryId, IReadOnlyList<PurchaseLineItem> Lines)
+{
+    public bool IsDraft => Status == "Draft";
+
+    public string StatusLabel => Status switch
+    {
+        "Draft" => "Borrador",
+        "Confirmed" => "Confirmada",
+        _ => Status,
+    };
+}
 
 /// <summary>Cliente del módulo Compras sobre el cliente HTTP autenticado y tenant-aware compartido.</summary>
 public sealed class PurchasesApi(ErpApiClient api)
 {
     public Task<PurchaseItem> RegisterPurchaseAsync(RegisterPurchaseRequest request, CancellationToken ct = default) =>
         api.SendJsonAsync<PurchaseItem>(HttpMethod.Post, "api/v1/purchases", request, ct);
+
+    public Task<PurchaseItem> ConfirmPurchaseAsync(Guid id, CancellationToken ct = default) =>
+        api.SendJsonAsync<PurchaseItem>(HttpMethod.Post, $"api/v1/purchases/{id:D}/confirm", new { }, ct);
 
     public Task<PagedResult<PurchaseItem>> ListPurchasesAsync(int page, int pageSize, string? search,
         string? status, CancellationToken ct = default)

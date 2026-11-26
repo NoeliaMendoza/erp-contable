@@ -24,6 +24,7 @@ public sealed partial class PurchasesViewModel : ViewModelBase
 
     public bool CanRegister { get; }
     public bool CanRead { get; }
+    public bool CanViewPurchases => CanRead || CanRegister;
     public ObservableCollection<SupplierItem> Suppliers { get; } = [];
     public ObservableCollection<ProductItem> Products { get; } = [];
     public ObservableCollection<PurchaseDraftLine> Lines { get; } = [];
@@ -36,13 +37,17 @@ public sealed partial class PurchasesViewModel : ViewModelBase
     [ObservableProperty] public partial string UnitCostText { get; set; } = "0.00";
     [ObservableProperty] public partial string? Search { get; set; }
     [ObservableProperty] public partial string? SuccessMessage { get; set; }
-    [ObservableProperty] public partial int Page { get; set; } = 1;
-    [ObservableProperty] public partial int TotalPages { get; set; } = 1;
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(CanGoPrevious)), NotifyPropertyChangedFor(nameof(CanGoNext))]
+    public partial int Page { get; set; } = 1;
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(CanGoNext))]
+    public partial int TotalPages { get; set; } = 1;
     [ObservableProperty] public partial int TotalCount { get; set; }
+    [ObservableProperty] public partial PurchaseItem? PendingConfirmation { get; set; }
 
-    public decimal DraftTotal => Lines.Sum(line => line.Quantity * line.UnitCost);
-    public bool IsEmpty => TotalCount == 0 && !IsBusy;
-    public string PageLabel => $"Página {Page} de {Math.Max(TotalPages, 1)}";
+    public decimal DraftTotal => Lines.Sum(line => line.LineCost);
+    public bool IsEmpty => CanRead && TotalCount == 0 && !IsBusy;
+    public bool CanGoPrevious => Page > 1;
+    public bool CanGoNext => Page < TotalPages;
 
     private async Task InitializeAsync()
     {
@@ -102,7 +107,8 @@ public sealed partial class PurchasesViewModel : ViewModelBase
     [RelayCommand]
     private async Task RegisterAsync()
     {
-        if (IsBusy) return;
+        if (IsBusy || !CanRegister) return;
+        SuccessMessage = null;
         if (SelectedSupplier is null)
         {
             ErrorMessage = "Seleccione un proveedor activo.";
@@ -117,14 +123,44 @@ public sealed partial class PurchasesViewModel : ViewModelBase
         await RunAsync(async () =>
         {
             var created = await _purchases.RegisterPurchaseAsync(new RegisterPurchaseRequest(SelectedSupplier.Id,
-                DateOnly.FromDateTime(DateTime.Today), Lines.Select(line => new PurchaseLineRequest(
+                null, Lines.Select(line => new PurchaseLineRequest(
                     line.Product.Id, line.Quantity, line.UnitCost)).ToArray()));
             SuccessMessage = $"Borrador {created.Number} registrado por USD {created.TotalCost:0.00}.";
+            if (!CanRead) Purchases.Insert(0, created);
+            Search = null;
+            Page = 1;
             Lines.Clear();
             SelectedSupplier = null;
             OnPropertyChanged(nameof(DraftTotal));
         });
         if (ErrorMessage is null && CanRead) await LoadAsync();
+    }
+
+    [RelayCommand]
+    private void AskConfirmation(PurchaseItem? purchase)
+    {
+        if (CanRegister && !IsBusy && purchase is { IsDraft: true } && Purchases.Contains(purchase))
+            PendingConfirmation = purchase;
+    }
+
+    [RelayCommand]
+    private void CancelConfirmation() => PendingConfirmation = null;
+
+    [RelayCommand]
+    private Task ConfirmAsync()
+    {
+        if (!CanRegister || IsBusy || PendingConfirmation is not { } purchase)
+            return Task.CompletedTask;
+
+        PendingConfirmation = null;
+        SuccessMessage = null;
+        return RunAsync(async () =>
+        {
+            var confirmed = await _purchases.ConfirmPurchaseAsync(purchase.Id);
+            var index = Purchases.IndexOf(purchase);
+            if (index >= 0) Purchases[index] = confirmed;
+            SuccessMessage = $"Recepción {confirmed.Number} confirmada por USD {confirmed.TotalCost:0.00}.";
+        });
     }
 
     [RelayCommand]
@@ -139,11 +175,19 @@ public sealed partial class PurchasesViewModel : ViewModelBase
             TotalCount = result.TotalCount;
             TotalPages = result.TotalPages;
             OnPropertyChanged(nameof(IsEmpty));
-            OnPropertyChanged(nameof(PageLabel));
         });
     }
 
-    [RelayCommand] private Task SearchNowAsync() { Page = 1; return LoadAsync(); }
+    [RelayCommand] private Task SearchNowAsync() => GoToPageAsync(1);
+    [RelayCommand] private Task PreviousPageAsync() => CanGoPrevious ? GoToPageAsync(Page - 1) : Task.CompletedTask;
+    [RelayCommand] private Task NextPageAsync() => CanGoNext ? GoToPageAsync(Page + 1) : Task.CompletedTask;
+
+    private Task GoToPageAsync(int page)
+    {
+        if (IsBusy || !CanRead) return Task.CompletedTask;
+        Page = page;
+        return LoadAsync();
+    }
 }
 
 public sealed record PurchaseDraftLine(ProductItem Product, decimal Quantity, decimal UnitCost)
