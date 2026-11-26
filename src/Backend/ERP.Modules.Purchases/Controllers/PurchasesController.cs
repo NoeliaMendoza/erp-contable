@@ -26,6 +26,10 @@ public sealed class PurchasesController(PurchaseService service) : ApiController
     [RequirePermission(PurchasesPermissions.DocumentsRead)]
     public Task<PurchaseResponse> Get(Guid id, CancellationToken ct) => service.GetAsync(id, ct);
 
+    [HttpPost("{id:guid}/confirm")]
+    [RequirePermission(PurchasesPermissions.DocumentsRegister)]
+    public Task<PurchaseResponse> Confirm(Guid id, CancellationToken ct) => service.ConfirmAsync(id, ct);
+
     [HttpPost]
     [RequirePermission(PurchasesPermissions.DocumentsRegister)]
     [ProducesResponseType<PurchaseResponse>(StatusCodes.Status201Created)]

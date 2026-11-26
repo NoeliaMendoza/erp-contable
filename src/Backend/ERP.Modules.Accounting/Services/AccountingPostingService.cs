@@ -8,11 +8,12 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ERP.Modules.Accounting.Services;
 
-public sealed class AccountingPostingService(AccountingDbContext db, ITenantContext tenant, TimeProvider clock)
+public sealed class AccountingPostingService(AccountingDbContext db, ITenantContext tenant, TimeProvider clock,
+    SharedTenantTransactionContext sharedTransaction)
     : IAccountingPostingService
 {
     public Task<PostingResult> PostAsync(PostingRequest request, CancellationToken cancellationToken) =>
-        db.InTenantTransactionAsync(async ct =>
+        db.InTenantTransactionAsync(sharedTransaction, async ct =>
         {
             var tenantId = tenant.RequireTenantId();
             var existing = await db.JournalEntries.AsNoTracking()
@@ -32,6 +33,14 @@ public sealed class AccountingPostingService(AccountingDbContext db, ITenantCont
             var credit = request.Lines.Sum(l => l.Credit);
             if (debit != credit || debit <= 0)
                 throw new DomainException("journal_unbalanced", $"Partida doble incumplida: debe {debit:0.00} ≠ haber {credit:0.00}.");
+
+            if (request is { SourceModule: "purchases", SourceDocumentType: "receipt" })
+            {
+                var codes = request.Lines.Select(line => Account.NormalizeCode(line.AccountCode)).Distinct().ToArray();
+                var available = await db.Accounts.CountAsync(a => codes.Contains(a.Code) && a.IsActive && a.AllowsPosting, ct);
+                if (available != codes.Length)
+                    throw new DomainException("journal_account_unavailable", "Las cuentas de la recepción deben estar activas y permitir movimientos en la empresa.");
+            }
 
             var entry = JournalEntryEntity.Create(tenantId, Guid.CreateVersion7(), request.AccountingDate, request.Description,
                 request.IdempotencyKey, request.SourceModule, request.SourceDocumentType, request.SourceDocumentId, clock.GetUtcNow());
