@@ -1,11 +1,16 @@
+using System.Text.Json.Serialization;
+
 namespace ERP.Modules.Purchases.Dtos;
 
-public sealed record RegisterPurchaseLineRequest(Guid ProductId, decimal Quantity, decimal UnitCost);
+public sealed record RegisterPurchaseLineRequest(
+    [property: JsonRequired] Guid ProductId,
+    [property: JsonRequired] decimal Quantity,
+    [property: JsonRequired] decimal UnitCost);
 
 public sealed record RegisterPurchaseRequest(
-    Guid SupplierId,
+    [property: JsonRequired] Guid SupplierId,
     DateOnly? PurchaseDate,
-    IReadOnlyList<RegisterPurchaseLineRequest> Lines);
+    [property: JsonRequired] IReadOnlyList<RegisterPurchaseLineRequest> Lines);
 
 public sealed record PurchaseLineResponse(
     Guid Id,

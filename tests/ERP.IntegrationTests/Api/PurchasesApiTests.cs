@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json.Nodes;
 using ERP.BuildingBlocks.Paging;
 using ERP.DbMigrator;
 using ERP.IntegrationTests.Infrastructure;
@@ -16,6 +17,38 @@ namespace ERP.IntegrationTests.Api;
 public sealed class PurchasesApiTests(PostgresFixture db)
 {
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
+
+    [Theory]
+    [InlineData("supplierId")]
+    [InlineData("lines")]
+    [InlineData("productId")]
+    [InlineData("quantity")]
+    [InlineData("unitCost")]
+    public async Task Registrar_exige_todos_los_campos_obligatorios_del_json(string missing)
+    {
+        await using var api = new ErpApiFactory(db);
+        using var andina = api.ClientFor(DevelopmentSeeder.AnaEmail, DevelopmentSeeder.TenantAndinaId);
+        var line = new JsonObject
+        {
+            ["productId"] = Guid.NewGuid(),
+            ["quantity"] = 10m,
+            ["unitCost"] = 3m,
+        };
+        var request = new JsonObject
+        {
+            ["supplierId"] = Guid.NewGuid(),
+            ["lines"] = new JsonArray(line),
+        };
+        Assert.True(request.Remove(missing) || line.Remove(missing));
+
+        using var response = await andina.PostAsJsonAsync("/api/v1/purchases", request, Ct);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var problem = await response.Content.ReadFromJsonAsync<JsonObject>(Ct);
+        var jsonPath = missing is "supplierId" or "lines" ? "$" : "$.lines[0]";
+        var errors = Assert.IsType<JsonArray>(problem?["errors"]?[jsonPath]);
+        Assert.Contains(missing, Assert.Single(errors)!.GetValue<string>(), StringComparison.Ordinal);
+    }
 
     [Fact]
     public async Task Registrar_una_compra_con_una_linea_nula_responde_400()
