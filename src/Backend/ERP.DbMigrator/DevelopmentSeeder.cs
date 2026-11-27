@@ -1,4 +1,5 @@
 using ERP.BuildingBlocks.Security;
+using ERP.Infrastructure.Persistence;
 using ERP.Infrastructure.Tenancy;
 using ERP.Modules.Accounting;
 using ERP.Modules.Inventory;
@@ -139,7 +140,7 @@ public sealed class DevelopmentSeeder(DatabaseMigrator migrator, string? demoPas
             await db.SaveChangesAsync(ct);
 
             // El stock nunca se digita: el saldo inicial entra como una recepción de compra ficticia (10 a USD 3).
-            await new InventoryStockService(db, session, TimeProvider.System).RegisterAsync(new InventoryMovementRequest(
+            await new InventoryStockService(db, session, TimeProvider.System, new SharedTenantTransactionContext()).RegisterAsync(new InventoryMovementRequest(
                 $"purchases:receipt:{OpeningReceiptId:D}", "purchases", "receipt", OpeningReceiptId, MainWarehouseId,
                 InventoryMovementKind.Entrada, DateOnly.FromDateTime(now.UtcDateTime),
                 [new InventoryMovementLine(cuaderno.Id, 10m, 3.00m)]), ct);

@@ -23,6 +23,158 @@ namespace ERP.Modules.Purchases.Data.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("ERP.Modules.Purchases.Models.Purchase", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<Guid?>("JournalEntryId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("journal_entry_id");
+
+                    b.Property<string>("Number")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("number");
+
+                    b.Property<DateOnly>("PurchaseDate")
+                        .HasColumnType("date")
+                        .HasColumnName("purchase_date");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("status");
+
+                    b.Property<Guid?>("StockMovementId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("stock_movement_id");
+
+                    b.Property<Guid>("SupplierId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("supplier_id");
+
+                    b.Property<string>("SupplierName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("supplier_name");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<decimal>("TotalCost")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("total_cost");
+
+                    b.Property<Guid>("WarehouseId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("warehouse_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_purchases");
+
+                    b.HasAlternateKey("TenantId", "Id")
+                        .HasName("ak_purchases_tenant_id_id");
+
+                    b.HasIndex("TenantId", "Number")
+                        .IsUnique()
+                        .HasDatabaseName("ux_purchases_tenant_number");
+
+                    b.HasIndex("TenantId", "SupplierId")
+                        .HasDatabaseName("ix_purchases_tenant_id_supplier_id");
+
+                    b.ToTable("purchases", "purchases", t =>
+                        {
+                            t.HasCheckConstraint("ck_purchases_number_nonempty", "length(btrim(number)) > 0");
+
+                            t.HasCheckConstraint("ck_purchases_total_cost_nonnegative", "total_cost >= 0");
+                        });
+                });
+
+            modelBuilder.Entity("ERP.Modules.Purchases.Models.PurchaseLine", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("code");
+
+                    b.Property<decimal>("LineCost")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("line_cost");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("name");
+
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("product_id");
+
+                    b.Property<Guid>("PurchaseId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("purchase_id");
+
+                    b.Property<decimal>("Quantity")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
+                        .HasColumnName("quantity");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<string>("UnitCode")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("unit_code");
+
+                    b.Property<decimal>("UnitCost")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
+                        .HasColumnName("unit_cost");
+
+                    b.HasKey("Id")
+                        .HasName("pk_purchase_lines");
+
+                    b.HasIndex("TenantId", "PurchaseId", "ProductId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_purchase_lines_purchase_product");
+
+                    b.ToTable("purchase_lines", "purchases", t =>
+                        {
+                            t.HasCheckConstraint("ck_purchase_lines_line_cost_nonnegative", "line_cost >= 0");
+
+                            t.HasCheckConstraint("ck_purchase_lines_quantity_positive", "quantity > 0");
+
+                            t.HasCheckConstraint("ck_purchase_lines_unit_cost_nonnegative", "unit_cost >= 0");
+                        });
+                });
+
             modelBuilder.Entity("ERP.Modules.Purchases.Models.Supplier", b =>
                 {
                     b.Property<Guid>("Id")
@@ -89,6 +241,9 @@ namespace ERP.Modules.Purchases.Data.Migrations
                     b.HasKey("Id")
                         .HasName("pk_suppliers");
 
+                    b.HasAlternateKey("TenantId", "Id")
+                        .HasName("ak_suppliers_tenant_id_id");
+
                     b.HasIndex("TenantId", "IdentificationType", "IdentificationNumber")
                         .IsUnique()
                         .HasDatabaseName("ux_suppliers_tenant_identification");
@@ -101,6 +256,33 @@ namespace ERP.Modules.Purchases.Data.Migrations
 
                             t.HasCheckConstraint("ck_suppliers_name_nonempty", "length(btrim(name)) > 0");
                         });
+                });
+
+            modelBuilder.Entity("ERP.Modules.Purchases.Models.Purchase", b =>
+                {
+                    b.HasOne("ERP.Modules.Purchases.Models.Supplier", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "SupplierId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_purchases_suppliers_tenant_id_supplier_id");
+                });
+
+            modelBuilder.Entity("ERP.Modules.Purchases.Models.PurchaseLine", b =>
+                {
+                    b.HasOne("ERP.Modules.Purchases.Models.Purchase", null)
+                        .WithMany("Lines")
+                        .HasForeignKey("TenantId", "PurchaseId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_purchase_lines_purchases_tenant_id_purchase_id");
+                });
+
+            modelBuilder.Entity("ERP.Modules.Purchases.Models.Purchase", b =>
+                {
+                    b.Navigation("Lines");
                 });
 #pragma warning restore 612, 618
         }
