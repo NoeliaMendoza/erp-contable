@@ -16,6 +16,90 @@ public sealed class PurchasesFrontendTests
     private const string Created = """{"id":"0195a000-0000-7000-8000-000000000001","identificationType":"06","identificationNumber":"AB123","name":"Proveedor","email":null,"phone":null,"address":null,"isActive":true}""";
 
     [Fact]
+    public async Task Registrar_carga_catalogos_y_envia_las_lineas_del_borrador()
+    {
+        var requests = new List<HttpRequestMessage>();
+        var draft = DraftPurchase();
+        var product = new ProductItem(draft.Lines[0].ProductId, "CUAD", "Cuaderno", "Product",
+            Guid.NewGuid(), "UND", "Unidad", 5m, true, "ZeroRated", null, null, null, null, null, true, null);
+        var supplier = new SupplierItem(draft.SupplierId, "06", "AB123", "Proveedor", null, null, null, true);
+        var api = CreateApi(["purchases.documents.register"], requests, request =>
+        {
+            if (request.Method == HttpMethod.Post)
+                return Json(HttpStatusCode.Created, JsonSerializer.Serialize(draft));
+            return request.RequestUri!.AbsolutePath switch
+            {
+                "/api/v1/suppliers" => Json(HttpStatusCode.OK, JsonSerializer.Serialize(new { items = new[] { supplier } })),
+                "/api/v1/products" => Json(HttpStatusCode.OK, JsonSerializer.Serialize(new { items = new[] { product } })),
+                _ => Json(HttpStatusCode.OK, Page),
+            };
+        }, out var session);
+        var vm = new PurchasesViewModel(new PurchasesApi(api), new InventoryApi(api), session);
+        await WaitForIdleAsync(vm);
+
+        await vm.RegisterCommand.ExecuteAsync(null);
+        Assert.NotNull(vm.ErrorMessage);
+        vm.SelectedSupplier = Assert.Single(vm.Suppliers);
+        await vm.RegisterCommand.ExecuteAsync(null);
+        Assert.NotNull(vm.ErrorMessage);
+        vm.AddLineCommand.Execute(null);
+        Assert.NotNull(vm.ErrorMessage);
+        vm.SelectedProduct = Assert.Single(vm.Products);
+        vm.QuantityText = "0";
+        vm.AddLineCommand.Execute(null);
+        Assert.Empty(vm.Lines);
+        vm.QuantityText = "10";
+        vm.UnitCostText = "-3";
+        vm.AddLineCommand.Execute(null);
+        Assert.Empty(vm.Lines);
+        vm.UnitCostText = "3";
+        vm.AddLineCommand.Execute(null);
+        vm.AddLineCommand.Execute(null);
+        Assert.NotNull(vm.ErrorMessage);
+        Assert.Equal(30m, vm.DraftTotal);
+        vm.RemoveLineCommand.Execute(Assert.Single(vm.Lines));
+        Assert.Equal(0m, vm.DraftTotal);
+        vm.AddLineCommand.Execute(null);
+        Assert.DoesNotContain(requests, request => request.Method == HttpMethod.Post);
+
+        await vm.RegisterCommand.ExecuteAsync(null);
+
+        var post = Assert.Single(requests, request => request.Method == HttpMethod.Post);
+        Assert.Equal("/api/v1/purchases", post.RequestUri!.AbsolutePath);
+        using var body = JsonDocument.Parse(await post.Content!.ReadAsStringAsync(TestContext.Current.CancellationToken));
+        Assert.Equal(supplier.Id, body.RootElement.GetProperty("supplierId").GetGuid());
+        var line = Assert.Single(body.RootElement.GetProperty("lines").EnumerateArray());
+        Assert.Equal(product.Id, line.GetProperty("productId").GetGuid());
+        Assert.Equal(10m, line.GetProperty("quantity").GetDecimal());
+        Assert.Equal(3m, line.GetProperty("unitCost").GetDecimal());
+        Assert.Equal(draft.Id, Assert.Single(vm.Purchases).Id);
+        Assert.Empty(vm.Lines);
+        Assert.Null(vm.SelectedSupplier);
+    }
+
+    [Fact]
+    public async Task Buscar_y_paginar_consulta_la_API_con_la_pagina_y_el_texto_correctos()
+    {
+        var requests = new List<HttpRequestMessage>();
+        var api = CreateApi(["purchases.documents.read"], requests, _ =>
+            Json(HttpStatusCode.OK, """{"items":[],"totalCount":21,"page":1,"pageSize":20,"totalPages":2}"""), out var session);
+        var vm = new PurchasesViewModel(new PurchasesApi(api), new InventoryApi(api), session);
+        await WaitForIdleAsync(vm);
+
+        await vm.NextPageCommand.ExecuteAsync(null);
+        Assert.True(vm.CanGoPrevious);
+        Assert.False(vm.CanGoNext);
+        await vm.PreviousPageCommand.ExecuteAsync(null);
+        Assert.False(vm.CanGoPrevious);
+        vm.Search = "proveedor uno";
+        await vm.SearchNowCommand.ExecuteAsync(null);
+
+        Assert.Equal(1, vm.Page);
+        Assert.Contains(requests, request => request.RequestUri!.Query.Contains("page=2", StringComparison.Ordinal));
+        Assert.Contains("search=proveedor%20uno", requests[^1].RequestUri!.Query, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task Confirmar_recepcion_envia_la_empresa_activa_y_actualiza_el_borrador()
     {
         var requests = new List<HttpRequestMessage>();

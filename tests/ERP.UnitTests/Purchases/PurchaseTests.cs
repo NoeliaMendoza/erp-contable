@@ -70,6 +70,39 @@ public sealed class PurchaseTests
         Assert.Equal("purchase_duplicate_product", error.Code);
     }
 
+    [Theory]
+    [InlineData("", "Proveedor", "purchase_number_invalid")]
+    [InlineData("C-TEST", "", "purchase_supplier_invalid")]
+    public void Compra_rechaza_datos_obligatorios_vacios(string number, string supplierName, string code)
+    {
+        var error = Assert.Throws<DomainException>(() =>
+            Purchase.Create(Guid.NewGuid(), Tenant, number, Guid.NewGuid(), supplierName,
+                new DateOnly(2026, 11, 24), Guid.NewGuid(), [new PurchaseLineData(Product(), 1m, 3m)], Now, null));
+
+        Assert.Equal(code, error.Code);
+    }
+
+    [Fact]
+    public void Compra_rechaza_un_detalle_vacio_y_un_articulo_inactivo()
+    {
+        Assert.Equal("purchase_lines_invalid", Assert.Throws<DomainException>(() => Create([])).Code);
+        var inactive = Product() with { IsActive = false };
+        var error = Assert.Throws<DomainException>(() => Create([new PurchaseLineData(inactive, 1m, 3m)]));
+        Assert.Equal("purchase_product_unavailable", error.Code);
+    }
+
+    [Fact]
+    public void Compra_con_identificadores_incompletos_permanece_en_borrador()
+    {
+        var purchase = Create();
+        var error = Assert.Throws<DomainException>(() => purchase.Confirm(Guid.NewGuid(), Guid.Empty));
+
+        Assert.Equal("purchase_confirmation_invalid", error.Code);
+        Assert.Equal(PurchaseStatus.Draft, purchase.Status);
+        Assert.Null(purchase.StockMovementId);
+        Assert.Null(purchase.JournalEntryId);
+    }
+
     private static Purchase Create(IReadOnlyCollection<PurchaseLineData>? lines = null) =>
         Purchase.Create(Guid.NewGuid(), Tenant, "C-TEST", Guid.NewGuid(), "Proveedor",
             new DateOnly(2026, 11, 24), Guid.NewGuid(), lines ?? [new PurchaseLineData(Product(), 1m, 3m)], Now, null);
