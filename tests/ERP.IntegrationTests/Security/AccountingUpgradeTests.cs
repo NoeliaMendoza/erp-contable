@@ -99,43 +99,43 @@ public sealed class AccountingUpgradeTests : IAsyncLifetime
 
         await using var connection = await OpenAsync(_db.MigratorConnectionString);
         await using var transaction = await connection.BeginTransactionAsync(Ct);
-        const string Account = """
+        const string account = """
             INSERT INTO accounting.accounts
                 (id, tenant_id, code, name, kind, normal_balance, parent_id, allows_posting, is_active, created_at_utc)
             VALUES (@id, @tenant, @code, @name, 'Asset', 'Debit', NULL, true, true, now())
             """;
-        const string Entry = """
+        const string entry = """
             INSERT INTO accounting.journal_entries
                 (id, tenant_id, accounting_date, description, idempotency_key, source_module,
                  source_document_type, source_document_id, status, posted_at_utc)
             VALUES (@id, @tenant, '2026-03-15', @description, @key, 'sales', 'invoice', @document, 0, now())
             """;
-        const string Line = """
+        const string line = """
             INSERT INTO accounting.journal_entry_lines
                 (id, tenant_id, journal_entry_id, account_code, debit, credit, memo)
             VALUES (@id, @tenant, @entry, @code, @debit, @credit, NULLIF(@memo, ''))
             """;
 
         await SetTenantAsync(connection, transaction, TenantA);
-        await ExecuteAsync(connection, transaction, Account, ("id", cajaA), ("tenant", TenantA), ("code", "1.1.01"), ("name", "Caja"));
-        await ExecuteAsync(connection, transaction, Account, ("id", ventasA), ("tenant", TenantA), ("code", "4.1.01"), ("name", "Ventas"));
-        await ExecuteAsync(connection, transaction, Entry, ("id", entryA), ("tenant", TenantA),
+        await ExecuteAsync(connection, transaction, account, ("id", cajaA), ("tenant", TenantA), ("code", "1.1.01"), ("name", "Caja"));
+        await ExecuteAsync(connection, transaction, account, ("id", ventasA), ("tenant", TenantA), ("code", "4.1.01"), ("name", "Ventas"));
+        await ExecuteAsync(connection, transaction, entry, ("id", entryA), ("tenant", TenantA),
             ("description", "Venta anterior a la migracion"), ("key", "sales:invoice:anterior-a"), ("document", Guid.Parse("dddddddd-0000-0000-0000-00000000000a")));
 
         // Los ids crecen con la posición esperada: el relleno numera por (empresa, asiento) ordenando por id.
-        await ExecuteAsync(connection, transaction, Line, ("id", Guid.Parse("0000000a-0000-0000-0000-000000000001")),
+        await ExecuteAsync(connection, transaction, line, ("id", Guid.Parse("0000000a-0000-0000-0000-000000000001")),
             ("tenant", TenantA), ("entry", entryA), ("code", "1.1.01"), ("debit", 20.00m), ("credit", 0.00m), ("memo", "Cobro"));
-        await ExecuteAsync(connection, transaction, Line, ("id", Guid.Parse("0000000a-0000-0000-0000-000000000002")),
+        await ExecuteAsync(connection, transaction, line, ("id", Guid.Parse("0000000a-0000-0000-0000-000000000002")),
             ("tenant", TenantA), ("entry", entryA), ("code", "4.1.01"), ("debit", 0.00m), ("credit", 20.00m), ("memo", string.Empty));
 
         await SetTenantAsync(connection, transaction, TenantB);
-        await ExecuteAsync(connection, transaction, Account, ("id", cajaB), ("tenant", TenantB), ("code", "1.1.01"), ("name", "Caja"));
-        await ExecuteAsync(connection, transaction, Account, ("id", ventasB), ("tenant", TenantB), ("code", "4.1.01"), ("name", "Ventas"));
-        await ExecuteAsync(connection, transaction, Entry, ("id", entryB), ("tenant", TenantB),
+        await ExecuteAsync(connection, transaction, account, ("id", cajaB), ("tenant", TenantB), ("code", "1.1.01"), ("name", "Caja"));
+        await ExecuteAsync(connection, transaction, account, ("id", ventasB), ("tenant", TenantB), ("code", "4.1.01"), ("name", "Ventas"));
+        await ExecuteAsync(connection, transaction, entry, ("id", entryB), ("tenant", TenantB),
             ("description", "Venta anterior de otra empresa"), ("key", "sales:invoice:anterior-b"), ("document", Guid.Parse("dddddddd-0000-0000-0000-00000000000b")));
-        await ExecuteAsync(connection, transaction, Line, ("id", Guid.Parse("0000000b-0000-0000-0000-000000000001")),
+        await ExecuteAsync(connection, transaction, line, ("id", Guid.Parse("0000000b-0000-0000-0000-000000000001")),
             ("tenant", TenantB), ("entry", entryB), ("code", "1.1.01"), ("debit", 5.50m), ("credit", 0.00m), ("memo", string.Empty));
-        await ExecuteAsync(connection, transaction, Line, ("id", Guid.Parse("0000000b-0000-0000-0000-000000000002")),
+        await ExecuteAsync(connection, transaction, line, ("id", Guid.Parse("0000000b-0000-0000-0000-000000000002")),
             ("tenant", TenantB), ("entry", entryB), ("code", "4.1.01"), ("debit", 0.00m), ("credit", 5.50m), ("memo", string.Empty));
         await transaction.CommitAsync(Ct);
 
