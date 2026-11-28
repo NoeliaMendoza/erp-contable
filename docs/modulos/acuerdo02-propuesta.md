@@ -8,7 +8,8 @@ Se verificaron las aprobaciones formales, las integraciones y el cierre. El ejem
 indicado por Romero y respaldado por la circular del SRI; el ajuste no implica una implementación del servicio.
 El contrato detallado está en [../contratos-modulos.md](../contratos-modulos.md#accountingcontracts--acuerdo-02-12).
 Las firmas de `IAccountingPostingService`, `PostingRequest`, `PostingLine` y `PostingResult` se conservan;
-solo se amplía su documentación XML. No se implementa el servicio de ACC-03 en esta entrega.
+solo se amplía su documentación XML. El servicio quedó implementado después, en ACC-03 (#17);
+este documento conserva el acuerdo tal como se aprobó para #12.
 
 ## Verificación de la asignación
 
@@ -75,9 +76,11 @@ La definición completa, las tablas de asientos y el helper C# están en el apar
 Noe coordina la aceptación con los responsables actuales de Compras y Ventas. La decisión de costo también requiere
 la participación de Inventario. No se atribuye aprobación a ningún integrante por haber leído o generado esta propuesta.
 
-El acuerdo quedó cerrado por Noe tras integrar #25 y #26. Esta aceptación corresponde a la definición:
-ACC-03 requiere además la primera entrega completa integrada y todavía debe implementar el servicio.
-Sus pruebas futuras deben demostrar partidas balanceadas, idempotencia, aislamiento y rollback del caso de uso completo.
+El acuerdo quedó cerrado por Noe tras integrar #25 y #26. Esa aceptación corresponde a la definición.
+ACC-03 (#17) implementó después el servicio y demostró con pruebas de integración partidas balanceadas,
+idempotencia y aislamiento entre empresas; el rollback del caso de uso completo sigue pendiente de la
+transacción compartida (PLAT-03 / #35). Ver [acc03-integracion-ventas.md](acc03-integracion-ventas.md)
+para el mapeo de cuentas que Ventas necesita antes de poder confirmar.
 
 Este cambio no genera migraciones, no modifica módulos de compañeros, no toca main ni se conecta a Neon.
 

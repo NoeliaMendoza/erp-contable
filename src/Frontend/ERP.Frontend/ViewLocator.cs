@@ -35,6 +35,7 @@ public sealed class ViewLocator : IDataTemplate
 
         // Contabilidad (Romero)
         [typeof(AccountsViewModel)] = () => new AccountsView(),
+        [typeof(JournalViewModel)] = () => new JournalView(),
 
         // Inventario (Mendoza)
         [typeof(UnitsViewModel)] = () => new UnitsView(),

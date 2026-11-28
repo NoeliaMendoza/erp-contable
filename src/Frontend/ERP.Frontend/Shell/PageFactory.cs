@@ -36,6 +36,8 @@ public sealed class PageFactory(ErpApiClient api, SessionState session, Frontend
     // Contabilidad (Romero)
     public AccountsViewModel AccountingAccounts() => new(new AccountingApi(api), session);
 
+    public JournalViewModel AccountingJournal() => new(new JournalApi(api));
+
     // Inventario (Mendoza)
     public UnitsViewModel InventoryUnits() => new(new InventoryApi(api), session);
 

@@ -40,7 +40,11 @@ Este mantenimiento no implementa todavía el servicio de contabilización del si
 
 **Estado: base v1 e IVA aprobados por Noe e integrados en los PR #25 y #26; tarea #12 cerrada por Noe.**
 Las firmas públicas existentes se conservan. La revisión y coordinación del productor con los consumidores
-se mantiene para cambios posteriores; esta definición no declara implementado `IAccountingPostingService` ni completa ACC-03 (#17).
+se mantiene para cambios posteriores. `IAccountingPostingService` ya está **implementado y probado** en ACC-03 (#17):
+contabilización con cuentas validadas del plan, partida doble, trazabilidad e idempotencia. Siguen fuera de #17 el
+período contable (`period_closed`, pendiente de #36), el reverso (`ReverseAsync`) y la transacción compartida
+entre módulos (PLAT-03 / #35). La confirmación de ventas requiere además el mapeo de cuentas de
+[modulos/acc03-integracion-ventas.md](modulos/acc03-integracion-ventas.md).
 El estado de cada decisión y la revisión requerida por Noe, Compras y Ventas constan en [modulos/acuerdo02-propuesta.md](modulos/acuerdo02-propuesta.md).
 
 ### Entrada y resultado
@@ -302,9 +306,10 @@ si una empresa tiene derecho al crédito tributario en Ecuador.
   El emisor debe conservar ese orden. Misma clave con datos distintos -> conflicto 409, sin sobrescribir.
 - Buscar primero un asiento ya confirmado: si el reintento coincide, devolverlo aunque después se haya cerrado
   el período o desactivado una cuenta. Eso no autoriza un asiento nuevo con esas condiciones.
-- La implementación de ACC-03 debe resolver dos peticiones simultáneas con restricción única en PostgreSQL.
-  Un `AnyAsync` previo no garantiza idempotencia. Una colisión no puede dejar una transacción abortada
-  y luego intentar continuar con consultas sin rollback/savepoint válido.
+- La implementación de ACC-03 resuelve dos peticiones simultáneas con la restricción única de PostgreSQL:
+  un `AnyAsync` previo no garantiza idempotencia, así que la inserción va dentro de un savepoint y, si otra
+  solicitud gana la restricción, se revierte al savepoint y se lee el asiento ganador para compararlo.
+  Hay prueba de integración con cuatro reintentos simultáneos sobre la misma clave.
 
 ### Fallos y transacción del documento completo
 
@@ -319,7 +324,9 @@ si una empresa tiene derecho al crédito tributario en Ecuador.
 | Misma clave con contenido distinto | `ConflictException`, `posting_idempotency_conflict`, 409; nuevo código propuesto |
 | Cancelación, desconexión o fallo de base | No devolver un resultado de éxito; revertir la operación o consultar/reintentar con su misma identidad si el resultado quedó incierto |
 
-Los códigos `journal_*` y `period_closed` ya existen en el dominio; los nuevos se implementarán en ACC-03.
+Los códigos `journal_*` ya existían en el dominio y los nuevos (`posting_account_not_available`,
+`posting_source_invalid`, `posting_idempotency_conflict`) están implementados en ACC-03. `period_closed` sigue
+declarado pero **no se evalúa**: no hay catálogo ni política de períodos acordada (corresponde a #36).
 Las excepciones internas no son respuestas HTTP: el host las transforma a `ProblemDetails` con `code` y `traceId`
 usando el manejador común. Se mantienen 400/401/403 para empresa ausente, autenticación y autorización según
 los contratos existentes. No se convierte cualquier error de infraestructura en un rechazo de negocio 422.
@@ -345,10 +352,11 @@ No se habilita esa operación hasta acordar la corrección del documento y sus e
 un reverso contable por sí solo no anula una venta ni devuelve stock.
 
 Antes de aceptar #12, productor y consumidores revisan la agrupación de venta/costo/IVA, códigos por empresa,
-tarifas y crédito recuperable, política monetaria inicial, transacción compartida, períodos y errores. Después de integrar el acuerdo y la primera
-entrega completa, ACC-03 deberá probar: ejemplo 30/20/12, reintento idéntico y distinto, concurrencia,
-aislamiento entre empresas, IVA positivo/cero, vigencias y falta de configuración fiscal, y rollback de documento/stock/asiento. Aquí se define ese comportamiento;
-no se presenta como implementado ni probado todavía.
+tarifas y crédito recuperable, política monetaria inicial, transacción compartida, períodos y errores.
+ACC-03 ya cuenta con pruebas de integración contra PostgreSQL real para: recorrido 30/20/12 con IVA 15% y con IVA cero,
+reintento idéntico y con contenido distinto, concurrencia, aislamiento entre empresas, cuentas no disponibles
+e inmutabilidad de los asientos. **Siguen sin probarse de extremo a extremo** el rollback conjunto de
+documento/stock/asiento (depende de PLAT-03 / #35) y el período cerrado (depende de #36).
 
 ## Customers/Identification (Sales)
 

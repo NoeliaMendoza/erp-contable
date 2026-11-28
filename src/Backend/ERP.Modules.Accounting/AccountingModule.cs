@@ -26,6 +26,7 @@ public static class AccountingModule
         services.AddModuleDbContext<AccountingDbContext>(configuration, AccountingDbContext.Schema);
         services.AddScoped<IAccountingPostingService, AccountingPostingService>();
         services.AddScoped<AccountService>();
+        services.AddScoped<JournalService>();
         services.AddValidatorsFromAssemblyContaining<SaveAccountRequestValidator>();
         services.AddSingleton<IPermissionProvider, AccountingPermissionProvider>();
         return services;

@@ -134,7 +134,7 @@ public sealed class PurchasesApiTests(PostgresFixture db)
 
     [Theory]
     [InlineData(true, "inventory_product_inactive")]
-    [InlineData(false, "journal_account_unavailable")]
+    [InlineData(false, "posting_account_not_available")]
     public async Task Un_fallo_deja_el_borrador_sin_entrada_ni_asiento(bool failStock, string errorCode)
     {
         await using var api = new ErpApiFactory(db);
