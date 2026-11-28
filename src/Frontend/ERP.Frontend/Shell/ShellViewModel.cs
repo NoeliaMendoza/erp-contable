@@ -85,6 +85,12 @@ public sealed partial class ShellViewModel : ViewModelBase
             MenuItems.Add(new MenuEntry("Proveedores", pages.PurchaseSuppliers));
         }
 
+        if (session.EnabledFeatures.Contains("purchases")
+            && (session.Can("purchases.documents.read") || session.Can("purchases.documents.register")))
+        {
+            MenuItems.Add(new MenuEntry("Compras", pages.Purchases));
+        }
+
         foreach (var module in FrontendModules.Pending.Where(m => session.EnabledFeatures.Contains(m.FeatureCode)))
         {
             MenuItems.Add(new MenuEntry(module.Title, () => pages.Placeholder(module)));

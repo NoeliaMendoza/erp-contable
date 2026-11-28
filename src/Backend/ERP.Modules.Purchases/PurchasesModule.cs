@@ -23,6 +23,7 @@ public static class PurchasesModule
         services.AddControllers().AddApplicationPart(typeof(PurchasesModule).Assembly);
         services.AddModuleDbContext<PurchasesDbContext>(configuration, PurchasesDbContext.Schema);
         services.AddScoped<SupplierService>();
+        services.AddScoped<PurchaseService>();
         services.AddValidatorsFromAssemblyContaining<SaveSupplierRequestValidator>();
         services.AddSingleton<IPermissionProvider, PurchasesPermissionProvider>();
         return services;
@@ -34,6 +35,7 @@ public static class PurchasesPermissions
     public const string SuppliersRead = "purchases.suppliers.read";
     public const string SuppliersWrite = "purchases.suppliers.write";
     public const string DocumentsRegister = "purchases.documents.register";
+    public const string DocumentsRead = "purchases.documents.read";
     public const string PaymentsRegister = "treasury.payments.register";
     public const string BanksManage = "treasury.banks.manage";
 }
@@ -45,6 +47,7 @@ public sealed class PurchasesPermissionProvider : IPermissionProvider
         new(PurchasesPermissions.SuppliersRead, PurchasesModule.Module, "Consultar proveedores"),
         new(PurchasesPermissions.SuppliersWrite, PurchasesModule.Module, "Crear, editar y desactivar proveedores"),
         new(PurchasesPermissions.DocumentsRegister, PurchasesModule.Module, "Registrar compras"),
+        new(PurchasesPermissions.DocumentsRead, PurchasesModule.Module, "Consultar compras"),
         new(PurchasesPermissions.PaymentsRegister, PurchasesModule.Module, "Registrar pagos y cobros"),
         new(PurchasesPermissions.BanksManage, PurchasesModule.Module, "Administrar caja y bancos"),
     ];

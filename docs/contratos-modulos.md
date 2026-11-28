@@ -104,6 +104,10 @@ La interfaz/tabla de configuración completa de mapeos (ACC-06) queda fuera de e
 la función de las cuentas de IVA sí se define aquí, sin imponer códigos universales.
 Si falta una cuenta configurada, la operación se rechaza; no se crean cuentas ni se escogen otras automáticamente.
 
+Para confirmar una compra al contado sin IVA, configure en la API los códigos del plan de la empresa mediante
+`Purchases__PostingAccounts__<tenantId>__Inventory` y `Purchases__PostingAccounts__<tenantId>__Cash`.
+Ambos códigos deben corresponder a cuentas activas y distintas que admitan movimientos.
+
 Ejemplos compilables de las solicitudes; definen datos, **no ejecutan el servicio todavía pendiente**:
 
 ```csharp
@@ -332,11 +336,8 @@ guardarse en **una misma conexión y transacción PostgreSQL**, manteniendo la e
 Los servicios participantes no hacen commits propios ni cambian el tenant. Ante una excepción se revierte todo;
 la interfaz no confirma una venta o recepción parcialmente guardada.
 
-**Brecha actual comprobada:** `AddModuleDbContext` registra contextos con conexiones independientes;
-`InTenantTransactionAsync` solo reutiliza `CurrentTransaction` del contexto recibido. Llamar sucesivamente a ambos
-servicios no implementa por sí solo la transacción compartida. Antes de habilitar la confirmación integrada,
-el responsable de integración debe coordinar una conexión/transacción por caso de uso y enlistar los contextos,
-por ejemplo mediante `UseTransactionAsync`. Los contratos siguen sin depender de EF, Npgsql ni ASP.NET.
+La confirmación de Compras abre la transacción con `InSharedTenantTransactionAsync`. Inventario y Contabilidad
+se incorporan mediante `UseTransactionAsync`. Los contratos siguen sin depender de EF, Npgsql ni ASP.NET.
 Referencia: [transacciones entre contextos en EF Core](https://learn.microsoft.com/en-us/ef/core/saving/transactions#cross-context-transaction).
 
 La política y el mecanismo para saber si un período está abierto todavía requieren acuerdo e implementación;
@@ -522,9 +523,9 @@ el commit y, dentro de una sola transacción:
 Las validaciones de catálogo, precio y stock fallan antes de confirmar el documento. Una respuesta incierta
 (por ejemplo, se cortó la conexión) se reconcilia repitiendo con la **misma clave**; nunca se crea un segundo documento.
 
-Inventario no hace commit propio ni cambia la empresa. Para que esto funcione se necesita la
-**transacción compartida entre módulos** que ACUERDO-02 identificó como brecha: hoy cada `DbContext` abre su propia
-conexión. Es un requisito común que se coordina como tarea aparte antes de habilitar la confirmación en PUR-02 y SAL-02.
+PUR-02 guarda primero un borrador. Al confirmar la recepción, Compras abre la transacción y los contextos de
+Inventario y Contabilidad se incorporan a ella. Si falla la recepción o el asiento, el documento queda como borrador.
+El reintento de una compra confirmada devuelve los identificadores originales. Ventas aún debe adoptar la transacción compartida.
 Si en el futuro se separan las bases, se necesita otro acuerdo de compensación u *outbox*; no se acepta éxito parcial.
 
 ### Fuera de este acuerdo
@@ -554,7 +555,7 @@ Sigue pendiente, fuera de INV-03:
 
 | Tema | Hoy | Dónde se resuelve |
 |---|---|---|
-| Transacción compartida | Cada `DbContext` abre su propia conexión: el movimiento puede confirmarse aunque luego falle el asiento | PLAT-03 (#35) |
+| Transacción compartida en Ventas | Compras ya comparte la transacción. Ventas aún abre transacciones independientes. | PLAT-03 (#35) |
 | Cuentas del asiento de venta | Nombres de cuenta («Costo de ventas», «Inventario») | Códigos del plan de la empresa (ACUERDO-02, SAL-02) |
 | Bodega de la venta | Ventas recibe `WarehouseId` en la solicitud | Usar `GetDefaultWarehouseAsync` y guardarla en el documento (SAL-02) |
 
@@ -601,6 +602,18 @@ Todo módulo nuevo sigue este patrón (implementado primero en Inventario):
 | GET/POST/PUT/PATCH | `/api/v1/products` · `/{id}` · `/{id}/status` | `inventory.products.read` / `.write` |
 | GET/POST/PUT/PATCH | `/api/v1/suppliers` · `/{id}` · `/{id}/status` | `purchases.suppliers.read` / `.write` |
 | GET | `/api/v1/suppliers/identification-types` | `purchases.suppliers.read` |
+| GET/POST/PUT/PATCH | `/api/v1/customers` · `/{id}` · `/{id}/status` | `sales.customers.read` / `.write` |
+| GET | `/api/v1/sales?page=&pageSize=&search=` | `sales.invoices.read` |
+| POST | `/api/v1/sales/confirm` | `sales.invoices.issue` |
 | GET | `/api/v1/tenant/taxpayers` | `platform.taxpayers.read` |
 
 Los modelos del escritorio (`ERP.Frontend.Shared/Api/ApiModels.cs`) se mantienen sincronizados manualmente con estos DTO.
+
+### Ventas (SAL-02)
+
+`POST /api/v1/sales/confirm` requiere `customerId`, `idempotencyKey`, `warehouseId` y `lines`; cada línea requiere
+`productId` y `quantity`. `saleDate` y `discount` son opcionales. El nombre del cliente se obtiene del registro
+activo de la empresa autenticada; ya no se acepta `customerName` como dato de la solicitud. El historial devuelve
+`PagedResult<SaleResponse>` y permite buscar por número de venta o nombre del cliente.
+En `POST /api/v1/customers`, `identificationType`, `identificationNumber` y `name` son obligatorios; los datos
+de contacto son opcionales. Las pantallas del escritorio deben usar un cliente registrado y activo para confirmar.

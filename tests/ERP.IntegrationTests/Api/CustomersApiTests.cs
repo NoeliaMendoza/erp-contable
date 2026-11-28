@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using ERP.BuildingBlocks.Paging;
 using ERP.DbMigrator;
 using ERP.IntegrationTests.Infrastructure;
@@ -110,5 +111,24 @@ public sealed class CustomersApiTests(PostgresFixture db) : IAsyncLifetime
 
         var foreign = await _ana.GetAsync($"/api/v1/customers/{customer.Id}", Ct);
         Assert.Equal(HttpStatusCode.NotFound, foreign.StatusCode);
+    }
+
+    [Theory]
+    [InlineData("identificationType")]
+    [InlineData("identificationNumber")]
+    [InlineData("name")]
+    public async Task Crear_cliente_exige_los_campos_obligatorios(string missing)
+    {
+        var request = new JsonObject
+        {
+            ["identificationType"] = "Cedula",
+            ["identificationNumber"] = "1234567890",
+            ["name"] = "Cliente incompleto",
+        };
+        Assert.True(request.Remove(missing));
+
+        using var response = await _ana.PostAsJsonAsync("/api/v1/customers", request, Ct);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 }

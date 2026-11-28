@@ -1,9 +1,18 @@
+using System.Text.Json.Serialization;
+
 namespace ERP.Modules.Sales.Dtos;
 
-public sealed record SaleLineRequest(Guid ProductId, decimal Quantity, decimal Discount = 0m);
+public sealed record SaleLineRequest(
+    [property: JsonRequired] Guid ProductId,
+    [property: JsonRequired] decimal Quantity,
+    decimal Discount = 0m);
 
-public sealed record ConfirmSaleRequest(string CustomerName, Guid? CustomerId, DateOnly? SaleDate,
-    string IdempotencyKey, Guid WarehouseId, IReadOnlyList<SaleLineRequest> Lines);
+public sealed record ConfirmSaleRequest(
+    [property: JsonRequired] Guid CustomerId,
+    DateOnly? SaleDate,
+    [property: JsonRequired] string IdempotencyKey,
+    [property: JsonRequired] Guid WarehouseId,
+    [property: JsonRequired] IReadOnlyList<SaleLineRequest> Lines);
 
 public sealed record SaleLineResponse(Guid Id, Guid ProductId, string Sku, string Name, decimal Quantity,
     decimal UnitPrice, decimal Discount, decimal TaxRate, decimal TaxAmount, decimal LineTotal);

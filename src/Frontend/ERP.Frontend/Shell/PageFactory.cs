@@ -50,6 +50,7 @@ public sealed class PageFactory(ErpApiClient api, SessionState session, Frontend
     public SalesViewModel Sales() => new(new SalesApi(api), new InventoryApi(api), session);
     public CustomersViewModel Customers() => new(new SalesApi(api), session);
     public SuppliersViewModel PurchaseSuppliers() => new(new PurchasesApi(api), session);
+    public PurchasesViewModel Purchases() => new(new PurchasesApi(api), new InventoryApi(api), session);
 }
 
 /// <summary>Módulos funcionales conocidos por el escritorio (el código coincide con tenant_features en la API).</summary>

@@ -12,7 +12,8 @@ namespace ERP.Modules.Inventory.Services;
 /// Movimientos y existencias según ACUERDO-01 (#11): costo promedio móvil, sin stock negativo, idempotencia que
 /// compara el contenido y bloqueo de los saldos para que dos ventas simultáneas no consuman la misma unidad.
 /// </summary>
-public sealed class InventoryStockService(InventoryDbContext db, ITenantContext tenant, TimeProvider clock) :
+public sealed class InventoryStockService(InventoryDbContext db, ITenantContext tenant, TimeProvider clock,
+    SharedTenantTransactionContext sharedTransaction) :
     IStockQueryService, IInventoryMovementService
 {
     /// <summary>Origen permitido por módulo: tipo de documento y tipo de movimiento (ACUERDO-01, «Quién pide qué»).</summary>
@@ -53,7 +54,7 @@ public sealed class InventoryStockService(InventoryDbContext db, ITenantContext 
         ArgumentNullException.ThrowIfNull(request);
         Validate(request);
 
-        return db.InTenantTransactionAsync(async ct =>
+        return db.InTenantTransactionAsync(sharedTransaction, async ct =>
         {
             var tenantId = tenant.RequireTenantId();
 

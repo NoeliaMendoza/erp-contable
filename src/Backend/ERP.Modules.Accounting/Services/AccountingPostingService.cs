@@ -19,7 +19,8 @@ namespace ERP.Modules.Accounting.Services;
 /// El período contable todavía no tiene catálogo ni política acordada, así que <c>period_closed</c>
 /// no se evalúa aquí; se incorporará cuando exista ese acuerdo (ver docs/contratos-modulos.md).
 /// </remarks>
-public sealed class AccountingPostingService(AccountingDbContext db, ITenantContext tenant, TimeProvider clock)
+public sealed class AccountingPostingService(AccountingDbContext db, ITenantContext tenant, TimeProvider clock,
+    SharedTenantTransactionContext sharedTransaction)
     : IAccountingPostingService
 {
     private const string Savepoint = "accounting_posting";
@@ -32,7 +33,7 @@ public sealed class AccountingPostingService(AccountingDbContext db, ITenantCont
     private sealed record StoredEntry(JournalEntryEntity Entry, IReadOnlyList<NormalizedLine> Lines);
 
     public Task<PostingResult> PostAsync(PostingRequest request, CancellationToken cancellationToken) =>
-        db.InTenantTransactionAsync(ct => PostCoreAsync(request, ct), cancellationToken);
+        db.InTenantTransactionAsync(sharedTransaction, ct => PostCoreAsync(request, ct), cancellationToken);
 
     /// <summary>
     /// Un asiento contabilizado no se elimina ni se edita. El reverso auditable queda pendiente del

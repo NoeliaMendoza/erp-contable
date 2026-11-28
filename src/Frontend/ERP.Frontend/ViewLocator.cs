@@ -45,6 +45,7 @@ public sealed class ViewLocator : IDataTemplate
         [typeof(SalesViewModel)] = () => new SalesView(),
         [typeof(CustomersViewModel)] = () => new CustomersView(),
         [typeof(SuppliersViewModel)] = () => new SuppliersView(),
+        [typeof(PurchasesViewModel)] = () => new PurchasesView(),
     };
 
     public Control Build(object? param) =>

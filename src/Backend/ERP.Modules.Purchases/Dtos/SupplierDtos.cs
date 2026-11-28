@@ -34,5 +34,5 @@ public sealed record SupplierResponse(
 /// Solicitud para activar o desactivar un proveedor.
 /// </summary>
 public sealed record ChangeSupplierStatusRequest(
-    bool IsActive
+    [property: System.Text.Json.Serialization.JsonRequired] bool IsActive
 );

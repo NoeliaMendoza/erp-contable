@@ -1,4 +1,5 @@
 using ERP.BuildingBlocks.Domain;
+using ERP.BuildingBlocks.Paging;
 using ERP.BuildingBlocks.Tenancy;
 using ERP.Infrastructure.Persistence;
 using ERP.Modules.Accounting.Contracts;
@@ -35,6 +36,12 @@ public sealed class SaleService(
             if (existing is not null)
                 return ToResponse(existing);
 
+            var customer = await db.Customers.AsNoTracking()
+                .SingleOrDefaultAsync(c => c.Id == request.CustomerId, transactionCt)
+                ?? throw new NotFoundException("Cliente", request.CustomerId);
+            if (!customer.IsActive)
+                throw new DomainException("sale_customer_inactive", $"El cliente '{customer.Name}' está inactivo.");
+
             var ids = request.Lines.Select(l => l.ProductId).Distinct().ToArray();
             var catalog = await products.GetByIdsAsync(ids, transactionCt);
             var catalogById = catalog.ToDictionary(p => p.ProductId);
@@ -43,7 +50,7 @@ public sealed class SaleService(
 
             var saleDate = request.SaleDate ?? DateOnly.FromDateTime(clock.GetUtcNow().UtcDateTime);
             var sale = Sale.Create(Guid.CreateVersion7(), tenantId, $"V-{Guid.CreateVersion7():N}".Substring(0, 30),
-                request.CustomerName, request.CustomerId, saleDate, request.IdempotencyKey, clock.GetUtcNow(), tenant.UserId);
+                customer.Name, customer.Id, saleDate, request.IdempotencyKey, clock.GetUtcNow(), tenant.UserId);
             db.Sales.Add(sale);
 
             var taxCatalog = await taxRates.GetCatalogAsync(transactionCt);
@@ -64,7 +71,6 @@ public sealed class SaleService(
                 var price = product.Price;
                 var line = SaleLine.Create(tenantId, sale.Id, product, lineRequest.Quantity, price,
                     lineRequest.Discount, taxRate);
-                db.SaleLines.Add(line);
                 sale.AddLine(line);
                 subtotal += decimal.Round(line.Quantity * line.UnitPrice - line.Discount, 2);
                 taxTotal += line.TaxAmount;
@@ -122,6 +128,24 @@ public sealed class SaleService(
             .SingleOrDefaultAsync(s => s.Id == id, ct) ?? throw new NotFoundException("Venta", id);
         return ToResponse(sale);
     }
+
+    public Task<PagedResult<SaleResponse>> ListAsync(PageRequest page, CancellationToken ct) =>
+        db.InTenantTransactionAsync(async token =>
+        {
+            IQueryable<Sale> query = db.Sales.AsNoTracking().Include(s => s.Lines);
+            if (page.Term is { } term)
+            {
+                var pattern = "%" + term.Replace("\\", "\\\\").Replace("%", "\\%").Replace("_", "\\_") + "%";
+                query = query.Where(s => EF.Functions.ILike(s.Number, pattern, "\\")
+                    || EF.Functions.ILike(s.CustomerName, pattern, "\\"));
+            }
+
+            var total = await query.CountAsync(token);
+            var sales = await query.OrderByDescending(s => s.SaleDate).ThenByDescending(s => s.CreatedAtUtc)
+                .Skip(page.Skip).Take(page.SafePageSize).ToListAsync(token);
+            return new PagedResult<SaleResponse>(sales.Select(ToResponse).ToList(), total,
+                page.SafePage, page.SafePageSize);
+        }, ct);
 
     private static SaleResponse ToResponse(Sale sale) => new(
         sale.Id, sale.Number, sale.CustomerName, sale.CustomerId, sale.SaleDate, sale.Status.ToString(),

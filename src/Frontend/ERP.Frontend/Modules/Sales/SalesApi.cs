@@ -1,11 +1,36 @@
+using System.Text.Json.Serialization;
 using ERP.Frontend.Shared.Api;
 
 namespace ERP.Frontend.Modules.Sales;
 
-public sealed record SaleLineRequest(Guid ProductId, decimal Quantity, decimal Discount = 0m);
+public sealed class SaleLineRequest(Guid productId, decimal quantity, decimal discount = 0m)
+{
+    [JsonRequired]
+    public Guid ProductId { get; init; } = productId;
 
-public sealed record ConfirmSaleRequest(string CustomerName, Guid? CustomerId, DateOnly? SaleDate,
-    string IdempotencyKey, Guid WarehouseId, IReadOnlyList<SaleLineRequest> Lines);
+    [JsonRequired]
+    public decimal Quantity { get; init; } = quantity;
+
+    public decimal Discount { get; init; } = discount;
+}
+
+public sealed class ConfirmSaleRequest(Guid customerId, DateOnly? saleDate,
+    string idempotencyKey, Guid warehouseId, IReadOnlyList<SaleLineRequest> lines)
+{
+    [JsonRequired]
+    public Guid CustomerId { get; init; } = customerId;
+
+    public DateOnly? SaleDate { get; init; } = saleDate;
+
+    [JsonRequired]
+    public string IdempotencyKey { get; init; } = idempotencyKey;
+
+    [JsonRequired]
+    public Guid WarehouseId { get; init; } = warehouseId;
+
+    [JsonRequired]
+    public IReadOnlyList<SaleLineRequest> Lines { get; init; } = lines;
+}
 
 public sealed record SaleLineResponse(Guid Id, Guid ProductId, string Sku, string Name, decimal Quantity,
     decimal UnitPrice, decimal Discount, decimal TaxRate, decimal TaxAmount, decimal LineTotal);
@@ -27,6 +52,8 @@ public sealed record CustomerItem(
     string? IdentificationWarning)
 {
     public string Status => IsActive ? "Activo" : "Inactivo";
+
+    public string Display => $"{Name} — {IdentificationType} {IdentificationNumber}";
 }
 
 public sealed record SaveCustomer(
@@ -55,6 +82,16 @@ public sealed class SalesApi(ErpApiClient api)
 
     public Task<SaleResponse> GetAsync(Guid id, CancellationToken ct = default) =>
         api.GetAsync<SaleResponse>($"api/v1/sales/{id}", ct);
+
+    public Task<PagedResult<SaleResponse>> ListSalesAsync(int page, int pageSize, string? search, CancellationToken ct = default)
+    {
+        var query = $"api/v1/sales?page={page}&pageSize={pageSize}";
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            query += "&search=" + Uri.EscapeDataString(search.Trim());
+        }
+        return api.GetAsync<PagedResult<SaleResponse>>(query, ct);
+    }
 
     public Task<PagedResult<CustomerItem>> ListCustomersAsync(
         int page, int pageSize, string? search, bool? isActive, CancellationToken ct = default)

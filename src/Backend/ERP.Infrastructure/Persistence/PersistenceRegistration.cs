@@ -2,6 +2,7 @@ using ERP.BuildingBlocks.Tenancy;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Infrastructure;
 
 namespace ERP.Infrastructure.Persistence;
@@ -22,6 +23,7 @@ public static class PersistenceRegistration
         this IServiceCollection services, IConfiguration configuration, string schema)
         where TContext : DbContext
     {
+        services.TryAddScoped<SharedTenantTransactionContext>();
         var connectionString = configuration.GetConnectionString(RuntimeConnectionName)
             ?? throw new InvalidOperationException(
                 $"Falta ConnectionStrings:{RuntimeConnectionName}. Configúrela con User Secrets o variables de entorno (ver README).");
