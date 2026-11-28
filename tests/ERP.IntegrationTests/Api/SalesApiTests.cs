@@ -108,6 +108,26 @@ public sealed class SalesApiTests(PostgresFixture db)
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
+    [Fact]
+    public async Task Confirmar_rechaza_cliente_inactivo()
+    {
+        await using var api = new ErpApiFactory(db);
+        using var andina = api.ClientFor(DevelopmentSeeder.AnaEmail, DevelopmentSeeder.TenantAndinaId);
+        var (product, warehouse) = await CreateStockedProductAsync(api, andina);
+        var customer = await CreateCustomerAsync(andina);
+        using var deactivated = await andina.PatchAsJsonAsync($"/api/v1/customers/{customer.Id:D}/status",
+            new { isActive = false }, Ct);
+        Assert.Equal(HttpStatusCode.OK, deactivated.StatusCode);
+        var request = new ConfirmSaleRequest(customer.Id, null, $"inactive:{Guid.NewGuid():D}",
+            warehouse.Id, [new SaleLineRequest(product.Id, 1m)]);
+
+        using var response = await andina.PostAsJsonAsync("/api/v1/sales/confirm", request, Ct);
+
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+        var problem = await response.Content.ReadFromJsonAsync<Dictionary<string, System.Text.Json.JsonElement>>(Ct);
+        Assert.Equal("sale_customer_inactive", problem!["code"].GetString());
+    }
+
     private static async Task<CustomerResponse> CreateCustomerAsync(HttpClient client)
     {
         var number = Random.Shared.NextInt64(1_000_000_000, 10_000_000_000).ToString(

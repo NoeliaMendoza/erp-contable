@@ -3,17 +3,34 @@ using ERP.Frontend.Shared.Api;
 
 namespace ERP.Frontend.Modules.Sales;
 
-public sealed record SaleLineRequest(
-    [property: JsonRequired] Guid ProductId,
-    [property: JsonRequired] decimal Quantity,
-    decimal Discount = 0m);
+public sealed class SaleLineRequest(Guid productId, decimal quantity, decimal discount = 0m)
+{
+    [JsonRequired]
+    public Guid ProductId { get; init; } = productId;
 
-public sealed record ConfirmSaleRequest(
-    [property: JsonRequired] Guid CustomerId,
-    DateOnly? SaleDate,
-    [property: JsonRequired] string IdempotencyKey,
-    [property: JsonRequired] Guid WarehouseId,
-    [property: JsonRequired] IReadOnlyList<SaleLineRequest> Lines);
+    [JsonRequired]
+    public decimal Quantity { get; init; } = quantity;
+
+    public decimal Discount { get; init; } = discount;
+}
+
+public sealed class ConfirmSaleRequest(Guid customerId, DateOnly? saleDate,
+    string idempotencyKey, Guid warehouseId, IReadOnlyList<SaleLineRequest> lines)
+{
+    [JsonRequired]
+    public Guid CustomerId { get; init; } = customerId;
+
+    public DateOnly? SaleDate { get; init; } = saleDate;
+
+    [JsonRequired]
+    public string IdempotencyKey { get; init; } = idempotencyKey;
+
+    [JsonRequired]
+    public Guid WarehouseId { get; init; } = warehouseId;
+
+    [JsonRequired]
+    public IReadOnlyList<SaleLineRequest> Lines { get; init; } = lines;
+}
 
 public sealed record SaleLineResponse(Guid Id, Guid ProductId, string Sku, string Name, decimal Quantity,
     decimal UnitPrice, decimal Discount, decimal TaxRate, decimal TaxAmount, decimal LineTotal);
