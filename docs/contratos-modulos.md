@@ -594,6 +594,18 @@ Todo módulo nuevo sigue este patrón (implementado primero en Inventario):
 | GET/POST/PUT/PATCH | `/api/v1/products` · `/{id}` · `/{id}/status` | `inventory.products.read` / `.write` |
 | GET/POST/PUT/PATCH | `/api/v1/suppliers` · `/{id}` · `/{id}/status` | `purchases.suppliers.read` / `.write` |
 | GET | `/api/v1/suppliers/identification-types` | `purchases.suppliers.read` |
+| GET/POST/PUT/PATCH | `/api/v1/customers` · `/{id}` · `/{id}/status` | `sales.customers.read` / `.write` |
+| GET | `/api/v1/sales?page=&pageSize=&search=` | `sales.invoices.read` |
+| POST | `/api/v1/sales/confirm` | `sales.invoices.issue` |
 | GET | `/api/v1/tenant/taxpayers` | `platform.taxpayers.read` |
 
 Los modelos del escritorio (`ERP.Frontend.Shared/Api/ApiModels.cs`) se mantienen sincronizados manualmente con estos DTO.
+
+### Ventas (SAL-02)
+
+`POST /api/v1/sales/confirm` requiere `customerId`, `idempotencyKey`, `warehouseId` y `lines`; cada línea requiere
+`productId` y `quantity`. `saleDate` y `discount` son opcionales. El nombre del cliente se obtiene del registro
+activo de la empresa autenticada; ya no se acepta `customerName` como dato de la solicitud. El historial devuelve
+`PagedResult<SaleResponse>` y permite buscar por número de venta o nombre del cliente.
+En `POST /api/v1/customers`, `identificationType`, `identificationNumber` y `name` son obligatorios; los datos
+de contacto son opcionales. Las pantallas del escritorio deben usar un cliente registrado y activo para confirmar.
