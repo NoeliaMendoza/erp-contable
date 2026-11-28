@@ -1,11 +1,19 @@
+using System.Text.Json.Serialization;
 using ERP.Frontend.Shared.Api;
 
 namespace ERP.Frontend.Modules.Sales;
 
-public sealed record SaleLineRequest(Guid ProductId, decimal Quantity, decimal Discount = 0m);
+public sealed record SaleLineRequest(
+    [property: JsonRequired] Guid ProductId,
+    [property: JsonRequired] decimal Quantity,
+    decimal Discount = 0m);
 
-public sealed record ConfirmSaleRequest(string CustomerName, Guid? CustomerId, DateOnly? SaleDate,
-    string IdempotencyKey, Guid WarehouseId, IReadOnlyList<SaleLineRequest> Lines);
+public sealed record ConfirmSaleRequest(
+    [property: JsonRequired] Guid CustomerId,
+    DateOnly? SaleDate,
+    [property: JsonRequired] string IdempotencyKey,
+    [property: JsonRequired] Guid WarehouseId,
+    [property: JsonRequired] IReadOnlyList<SaleLineRequest> Lines);
 
 public sealed record SaleLineResponse(Guid Id, Guid ProductId, string Sku, string Name, decimal Quantity,
     decimal UnitPrice, decimal Discount, decimal TaxRate, decimal TaxAmount, decimal LineTotal);
@@ -27,6 +35,8 @@ public sealed record CustomerItem(
     string? IdentificationWarning)
 {
     public string Status => IsActive ? "Activo" : "Inactivo";
+
+    public string Display => $"{Name} — {IdentificationType} {IdentificationNumber}";
 }
 
 public sealed record SaveCustomer(
@@ -55,6 +65,16 @@ public sealed class SalesApi(ErpApiClient api)
 
     public Task<SaleResponse> GetAsync(Guid id, CancellationToken ct = default) =>
         api.GetAsync<SaleResponse>($"api/v1/sales/{id}", ct);
+
+    public Task<PagedResult<SaleResponse>> ListSalesAsync(int page, int pageSize, string? search, CancellationToken ct = default)
+    {
+        var query = $"api/v1/sales?page={page}&pageSize={pageSize}";
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            query += "&search=" + Uri.EscapeDataString(search.Trim());
+        }
+        return api.GetAsync<PagedResult<SaleResponse>>(query, ct);
+    }
 
     public Task<PagedResult<CustomerItem>> ListCustomersAsync(
         int page, int pageSize, string? search, bool? isActive, CancellationToken ct = default)
